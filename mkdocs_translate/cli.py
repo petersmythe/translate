@@ -185,11 +185,19 @@ def scan_download( collected: list[str] ):
 @app.command()
 def init(
         rst_path: Annotated[
-            List[str], typer.Argument(help="path to rst source folder")] = mkdocs_translate.translate.rst_folder
+            List[str], typer.Argument(help="path to rst source folder")] = mkdocs_translate.translate.rst_folder,
+        rst_folder_arg: Annotated[str, typer.Option("--rst-folder", help="RST source folder")] = None,
+        docs_folder_arg: Annotated[str, typer.Option("--docs-folder", help="Docs output folder")] = None
 ):
     """
     Init docs directory, copying images and files from rst source folder (excluding rst files for migration).
     """
+    # Use command line arguments if provided, otherwise use defaults
+    if rst_folder_arg:
+        mkdocs_translate.translate.rst_folder = rst_folder_arg
+    if docs_folder_arg:
+        mkdocs_translate.translate.docs_folder = docs_folder_arg
+        
     rst_folder = mkdocs_translate.translate.rst_folder
     docs_folder = mkdocs_translate.translate.docs_folder
     if not os.path.exists(rst_folder):
@@ -262,6 +270,7 @@ def check_folders():
     """
     rst_folder = mkdocs_translate.translate.rst_folder
     docs_folder = mkdocs_translate.translate.docs_folder
+    
     if not os.path.exists(docs_folder):
         raise FileNotFoundError(errno.ENOENT, f"The docs folder does not exist at location:", docs_folder)
 
