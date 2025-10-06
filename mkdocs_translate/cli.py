@@ -7,6 +7,7 @@ and deepl for language translation services.
 import logging
 import os
 import shutil
+import errno
 from typing import List
 from typing import Optional
 
