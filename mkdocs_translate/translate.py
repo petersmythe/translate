@@ -808,7 +808,12 @@ def convert_rst(rst_file: str) -> str:
         md_file = md_file.replace(rst_folder, docs_folder, 1)
 
     # temp file for processing
-    md_tmp_file = re.sub("^" + config['rst_folder'] + "/", convert_folder + '/', rst_file)
+    # Use os.path operations instead of regex for path manipulation
+    if rst_file.startswith(config['rst_folder']):
+        relative_path = rst_file[len(config['rst_folder']):].lstrip('/\\')
+        md_tmp_file = os.path.join(convert_folder, relative_path)
+    else:
+        md_tmp_file = os.path.join(convert_folder, os.path.basename(rst_file))
     md_tmp_file = md_tmp_file.replace(".txt", ".md")
     md_tmp_file = md_tmp_file.replace(".rst", ".md")
     md_tmp_file = md_tmp_file.replace(".md", ".tmp.md")
