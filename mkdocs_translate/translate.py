@@ -51,12 +51,12 @@ def load_config(override_path: str) -> dict:
     """
     if override_path:
         # override configuration
-        with open(override_path, 'r') as file:
+        with open(override_path, 'r', encoding='utf-8') as file:
             text = file.read()
         return yaml.safe_load(text)
     elif os.path.exists('translate.yml'):
         # current directory configuration
-        with open('translate.yml', 'r') as file:
+        with open('translate.yml', 'r', encoding='utf-8') as file:
             text = file.read()
         return yaml.safe_load(text)
     else:
@@ -115,11 +115,15 @@ def load_anchors(anchor_txt: str) -> dict[str, str]:
         raise FileNotFoundError(errno.ENOENT, f"anchors definition file does not exist at location:", anchor_txt)
 
     index = {}
-    with open(anchor_txt, 'r') as file:
-        for line in file:
-            if '=' in line:
-                (anchor, path) = line.split('=', 1)
-                index[anchor] = path[0:-1]
+    try:
+        with open(anchor_txt, 'r', encoding='utf-8') as file:
+            for line in file:
+                if '=' in line:
+                    (anchor, path) = line.split('=', 1)
+                    index[anchor] = path[0:-1]
+    except UnicodeDecodeError as e:
+        logger.warning(f"Skipping anchors file {anchor_txt} due to encoding issues: {e}")
+        return {}
 
     return index
 
@@ -184,17 +188,18 @@ def scan_index_rst(base_path: str, rst_file: str) -> str:
     if not common_path:
         raise FileNotFoundError(errno.ENOENT, f"RST base_path '{base_path}' does not contain rst_file: '{rst_file}'")
 
-    with open(rst_file, 'r') as file:
-        text = file.read()
+    try:
+        with open(rst_file, 'r', encoding='utf-8') as file:
+            text = file.read()
+    except UnicodeDecodeError as e:
+        logger.warning(f"Skipping file {rst_file} due to encoding issues: {e}")
+        return ""
 
     relative_path = rst_file[len(base_path):]
     doc = relative_path
     ref = None
     heading = None
     index = ''
-
-    with open(rst_file, 'r') as file:
-        text = file.read()
 
     lines = text.splitlines()
 
@@ -420,8 +425,12 @@ def scan_download_rst(base_path: str, rst_file: str) -> set[str]:
     if not common_path:
         raise FileNotFoundError(errno.ENOENT, f"RST base_path '{base_path}' does not contain rst_file: '{rst_file}'")
 
-    with open(rst_file, 'r') as file:
-        text = file.read()
+    try:
+        with open(rst_file, 'r', encoding='utf-8') as file:
+            text = file.read()
+    except UnicodeDecodeError as e:
+        logger.warning(f"Skipping file {rst_file} due to encoding issues: {e}")
+        return set()
 
     if ":download:" not in text:
         return set()
@@ -501,8 +510,13 @@ def scan_toctree(toctree_rst_file) -> object:
     dir_path = os.path.dirname(toctree_rst_file)
     if not os.path.exists(toctree_rst_file):
         raise FileNotFoundError('Unable to scan:', toctree_rst_file)
-    with open(toctree_rst_file, 'r') as file:
-        text = file.read()
+    try:
+        with open(toctree_rst_file, 'r', encoding='utf-8') as file:
+            text = file.read()
+    except UnicodeDecodeError as e:
+        logger.warning(f"Skipping toctree file {toctree_rst_file} due to encoding issues: {e}")
+        nav_reference = _nav_reference_file(toctree_rst_file)
+        return [nav_reference]
 
     # set of toctree items already covered (used to support `*` wildcards)
     matched_links: set[str] = set()
@@ -843,8 +857,12 @@ def preprocess_rst(rst_file: str, rst_prep: str) -> str:
     """
     Pre-process rst files to simplify sphinx-build directives for pandoc conversion
     """
-    with open(rst_file, 'r') as file:
-        text = file.read()
+    try:
+        with open(rst_file, 'r', encoding='utf-8') as file:
+            text = file.read()
+    except UnicodeDecodeError as e:
+        logger.error(f"Cannot preprocess {rst_file} due to encoding issues: {e}")
+        raise
 
     # process toc_tree directive into a list of links
     if '.. toctree::' in text:
@@ -986,7 +1004,7 @@ def preprocess_rst(rst_file: str, rst_prep: str) -> str:
                         text
                     )
 
-    with open(rst_prep, 'w') as rst:
+    with open(rst_prep, 'w', encoding='utf-8') as rst:
         rst.write(text)
 
 def _block_directive_code(file_path: str, value: str, arguments: dict[str, str], block: str, indent: str) -> str:
@@ -2071,7 +2089,7 @@ def postprocess_rst_markdown(md_file: str, md_clean: str):
     md_clean location to write cleaned markdown contents
     """
 
-    with open(md_file, 'r') as markdown:
+    with open(md_file, 'r', encoding='utf-8') as markdown:
         text = markdown.read()
 
     if "{.title-ref}" in text:
@@ -2193,7 +2211,7 @@ def postprocess_rst_markdown(md_file: str, md_clean: str):
         else:
             clean = '---\nrender_macros: true\n---\n\n' + clean
 
-    with open(md_clean, 'w') as markdown:
+    with open(md_clean, 'w', encoding='utf-8') as markdown:
         markdown.write(clean)
 
 def _postprocess_link(link:str) -> str:
@@ -2498,7 +2516,7 @@ def convert_markdown(md_file: str) -> str:
 
 
 def preprocess_markdown(md_file: str, md_prep: str) -> str:
-    with open(md_file, 'r') as file:
+    with open(md_file, 'r', encoding='utf-8') as file:
         text = file.read()
 
     clean = ''
@@ -2573,7 +2591,7 @@ def preprocess_markdown(md_file: str, md_prep: str) -> str:
 
                 clean += line + '\n'
 
-    with open(md_prep, 'w') as markdown:
+    with open(md_prep, 'w', encoding='utf-8') as markdown:
         markdown.write(clean)
 
 
@@ -2626,7 +2644,7 @@ def convert_html(html_file: str) -> str:
 
 
 def preprocess_html(html_file: str, html_clean: str):
-    with open(html_file, 'r') as html:
+    with open(html_file, 'r', encoding='utf-8') as html:
         data = html.read()
 
     # Fix image captions
@@ -2663,12 +2681,12 @@ def preprocess_html(html_file: str, html_clean: str):
         clean,
         flags=re.MULTILINE
     )
-    with open(html_clean, 'w') as html:
+    with open(html_clean, 'w', encoding='utf-8') as html:
         html.write(clean)
 
 
 def postprocess_markdown(md_file: str, md_clean: str):
-    with open(md_file, 'r') as markdown:
+    with open(md_file, 'r', encoding='utf-8') as markdown:
         data = markdown.read()
 
     # fix icons
@@ -2692,7 +2710,7 @@ def postprocess_markdown(md_file: str, md_clean: str):
         data,
         flags=re.MULTILINE
     )
-    with open(md_clean, 'w') as markdown:
+    with open(md_clean, 'w', encoding='utf-8') as markdown:
         markdown.write(data)
 
 
@@ -2747,7 +2765,7 @@ def deepl_document(en_html: str, fr_html: str):
 
 
 def preprocess_translate(html_file: str, html_clean: str):
-    with open(html_file, 'r') as html:
+    with open(html_file, 'r', encoding='utf-8') as html:
         data = html.read()
 
     # Fix deepl not respecting <pre><code> blogs using CDATA
@@ -2763,5 +2781,5 @@ def preprocess_translate(html_file: str, html_clean: str):
         data,
         flags=re.MULTILINE
     )
-    with open(html_clean, 'w') as html:
+    with open(html_clean, 'w', encoding='utf-8') as html:
         html.write(data)

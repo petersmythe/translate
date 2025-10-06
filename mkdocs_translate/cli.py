@@ -143,7 +143,7 @@ def scan_index( collected: list[str]):
     if not os.path.exists(anchor_dir):
         print("anchors.txt index directory:", anchor_dir)
         os.makedirs(anchor_dir)
-    with open(anchor_path, 'w') as anchor_file:
+    with open(anchor_path, 'w', encoding='utf-8') as anchor_file:
         anchor_file.write(index)
     logger.info("index: "+anchor_path)
 
@@ -172,12 +172,12 @@ def scan_download( collected: list[str] ):
             os.makedirs(download_folder)
 
         download_txt_file = os.path.join(download_folder,"download.txt")
-        with open(download_txt_file, 'w') as download_file:
+        with open(download_txt_file, 'w', encoding='utf-8') as download_file:
             logging.info("download.txt: "+ download_txt_file)
             text = "\n".join(download_references)
             download_file.write(text)
         download_gitiginore = os.path.join(download_folder,".gitignore")
-        with open(download_gitiginore, 'w') as gitignore:
+        with open(download_gitiginore, 'w', encoding='utf-8') as gitignore:
             text = "*\n!download.txt"
             gitignore.write(text)
 

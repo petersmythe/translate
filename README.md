@@ -329,7 +329,7 @@ Pandoc:
 
 For geoserver or core-geonetwork (or other projects following maven conventions) no configuration is required.
 
-To override configuration on command line add `-concfig <file.yml>` before the command:
+To override configuration on command line add `-config <file.yml>` before the command:
 
 ```bash
 mkdocs_translate --config translate.yml rst
