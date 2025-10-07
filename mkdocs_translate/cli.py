@@ -162,7 +162,7 @@ def scan_download( collected: list[str] ):
                 download_folder = download_folder.replace(rst_folder, docs_folder, 1)
 
             if download_folder in downloads:
-                downloads[download_folder].extend(download_references)
+                downloads[download_folder].update(download_references)
             else:
                 downloads[download_folder] = download_references
 
