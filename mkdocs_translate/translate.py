@@ -2715,6 +2715,10 @@ def postprocess_markdown(md_file: str, md_clean: str):
         data,
         flags=re.MULTILINE
     )
+
+    # Replace <br>, <br/>, <br /> with Markdown's space-space-newline (outside code blocks)
+    # Note: This does not avoid replacements inside code blocks or inline code
+    data = re.sub(r'<br\s*/?>', '  \n', data, flags=re.IGNORECASE)
     with open(md_clean, 'w', encoding='utf-8') as markdown:
         markdown.write(data)
 
