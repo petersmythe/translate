@@ -502,7 +502,7 @@ def scan_toctree(toctree_rst_file) -> object:
     """
     Scan rst_file document and process toctree directives into nav dictionary.
 
-    :param rst_path: rst file to process
+    :param toctree_rst_file: rst file to process
     """
     nav: list[object] = []
     toc_tree: bool = False
@@ -588,7 +588,8 @@ def scan_toctree(toctree_rst_file) -> object:
                 toc_tree = False
 
     if len(nav) == 0:
-        nav_reference = _nav_reference_link(dir_path, rst_path)
+        filename_without_ext = os.path.splitext(os.path.basename(toctree_rst_file))[0]
+        nav_reference = _nav_reference_link(dir_path, filename_without_ext)
         return [nav_reference]
     else:
         return nav
