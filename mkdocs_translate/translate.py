@@ -1128,8 +1128,8 @@ def _preprocess_rst_toctree(path: str, text: str) -> str:
     process = ''
     for line in text.splitlines():
         if line.startswith('.. toctree::'):
-            # directive started
-            toctree = '<div class="grid cards" markdown>\n\n'
+            # directive started - use raw markdown to ensure table passes through pandoc correctly
+            toctree = '.. code-block:: raw_markdown\n\n   | Section | Description |\n   |---------|-------------|\n'
             hidden = False
             continue
 
@@ -1158,15 +1158,19 @@ def _preprocess_rst_toctree(path: str, text: str) -> str:
                             if match.link_rst not in matched_links:
                                 # wildcard only lists documents not already covered
                                 matched_links.add(match.link_rst)
-                                toctree += f"-   `{match.title()} <{match.link_rst}>`_\n"
+                                title = match.title()
+                                description = title  # Use title as description for now
+                                toctree += f"   | [{title}]({match.link_rst}) | {description} |\n"
                 else:
                     if parse.link_rst not in matched_links:
                         matched_links.add(parse.link_rst)
-                        toctree += f"-   `{parse.title()} <{parse.link_rst}>`_\n"
+                        title = parse.title()
+                        description = title  # Use title as description for now  
+                        toctree += f"   | [{title}]({parse.link_rst}) | {description} |\n"
             else:
                 # end directive
                 if not hidden:
-                    process += toctree + '\n</div>\n\n'
+                    process += toctree + '\n'
 
                 process += line + '\n'
                 toctree = None
@@ -1177,7 +1181,7 @@ def _preprocess_rst_toctree(path: str, text: str) -> str:
     if toctree != None:
         # end directive at end of file
         if not hidden:
-            process += toctree + '\n</div>\n\n'
+            process += toctree + '\n'
 
     return process
 
