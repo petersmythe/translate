@@ -2306,6 +2306,7 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
     # scan document for pandoc fenced div info, warnings, ...
     admonition = False
     admonition_title = False
+    has_custom_title = False  # Track if title came from attributes
     type = None
     indent = ''
     title = None
@@ -2319,34 +2320,49 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
         if not admonition:
             # scanning content looking for fenced div start
             fence_open = re.search(r"^(\s*):::+\s*(\w*)$", line)
-            if not fence_open:
-                process += line + '\n'
-                continue
-            else:
-                # admonition started
+            fence_attr = re.search(r"^(\s*):::+\s*\{\.(\w+)(?:\s+title=\"([^\"]*)\")?\}$", line)
+            
+            if fence_open:
+                # Simple format: :::: note
                 admonition = True
                 admonition_title = False
                 indent = fence_open.group(1)
                 fence_type = fence_open.group(2)
+                custom_title = None
+            elif fence_attr:
+                # Attribute format: :::: {.note title="Custom Title"}
+                admonition = True
+                admonition_title = False
+                indent = fence_attr.group(1)
+                fence_type = fence_attr.group(2)
+                custom_title = fence_attr.group(3)  # Could be None if no title attribute
+            else:
+                process += line + '\n'
+                continue
 
-                (type,title) = _fenced_div_to_mkdocs(fence_type)
+            (type, title) = _fenced_div_to_mkdocs(fence_type)
+            
+            # If pandoc provided a custom title in attributes, use it
+            if custom_title is not None:
+                title = custom_title
+                has_custom_title = True
                 
-                # Defensive programming: ensure type is never None
-                if type is None:
-                    type = 'info'  # fallback to info admonition
+            # Defensive programming: ensure type is never None
+            if type is None:
+                type = 'info'  # fallback to info admonition
 
-                if title is None:
-                    # expect title next (with or without optional divs markers)
-                    state = 'title'
-                    title = None
-                    note = None
-                else:
-                    # title provided, expect note content next
-                    note = ''
-                    state = 'note'
+            if title is None:
+                # expect title next (with or without optional divs markers)
+                state = 'title'
+                title = None
+                note = None
+            else:
+                # title provided, expect note content next
+                note = ''
+                state = 'note'
 
                 logger.debug("process:'" + line + "'")
-                logger.debug('start:', type, " title:", title)
+                logger.debug('start: %s title: %s', type, title)
                 continue
 
         else:
@@ -2354,18 +2370,20 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
             logger.debug("process:'" + line + "'")
 
             fence_title = re.search(r"^(\s*):::\s*title\s*$", line)
-            if fence_title:
-                # start title processing, next line title
+            if fence_title and not has_custom_title:
+                # start title processing, next line title (only if no custom title)
                 state = "div_title"
                 admonition_title = True
-
-                title = None
                 logger.debug("start title")
                 continue
+            elif fence_title and has_custom_title:
+                # Skip inner title structure when we have custom title from attributes
+                logger.debug("skipping inner title, using attribute title: %s", title)
+                continue
 
-            if not blank and title is None:
+            if not blank and not has_custom_title and title is None:
                 title = line.strip()  # title obtained
-                logger.debug("title", title)
+                logger.debug("title: %s", title)
 
                 if admonition_title:
                     state = "div_title_end"
@@ -2374,17 +2392,28 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
                     state = "note"
                     note = ''
                 continue
+            elif has_custom_title and (state == "div_title" or admonition_title):
+                # Skip lines in title processing when we have custom title
+                logger.debug("skipping title content line: %s", line)
+                continue
 
             # scanning admonition for fence title break / close
             fence = re.search(r"^(\s*):::+\s*$", line)
 
-            if fence and admonition_title:
-                # expected fence break to end div_title
+            if fence and admonition_title and not has_custom_title:
+                # expected fence break to end div_title (only when no custom title)
                 admonition_title = False
                 # start processing for note
                 state = "note"
                 note = ''
                 logger.debug("start note")
+                continue
+            elif fence and has_custom_title and (state == "title" or admonition_title):
+                # Skip inner fence when we have custom title, start note processing
+                admonition_title = False
+                state = "note" 
+                note = ''
+                logger.debug("start note (skipping inner fence)")
                 continue
 
             if fence:
@@ -2396,9 +2425,9 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
                     state = "done"
                     # processing fenced div
                     logger.debug("fenced div")
-                    logger.debug("  type:", type)
-                    logger.debug("  title:", title)
-                    logger.debug("  note:", note)
+                    logger.debug("  type: %s", type)
+                    logger.debug("  title: %s", title)
+                    logger.debug("  note: %s", note)
 
                     process += indent + '!!! ' + type
 
@@ -2417,6 +2446,7 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
                     state = "scan"
                     admonition = False
                     admonition_title = False
+                    has_custom_title = False
                     type = None
                     indent = ''
                     title = None
@@ -2445,10 +2475,10 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
     if admonition:
         # fenced div was at end of file
         logger.error(md_file + ':' + str(process.count('\n')) + ' unexpected:')
-        logger.error("  admonition", admonition)
-        logger.error("  type", type)
-        logger.error("  title", title)
-        logger.error("  note", note)
+        logger.error("  admonition: %s", admonition)
+        logger.error("  type: %s", type)
+        logger.error("  title: %s", title)
+        logger.error("  note: %s", note)
         logger.debug(process)
         raise ValueError(
             'Expected ::: to end fence dive ' + str(type) + ' ' + str(title) + ' ' + str(note) + "\n" + md_file + ':' + str(process.count('\n')))
