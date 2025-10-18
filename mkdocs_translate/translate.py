@@ -2319,11 +2319,11 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
 
         if not admonition:
             # scanning content looking for fenced div start
-            fence_open = re.search(r"^(\s*):::+\s*(\w*)$", line)
+            fence_open = re.search(r"^(\s*):::+\s*(\w+)$", line)  # Only match when there's a type
             fence_attr = re.search(r"^(\s*):::+\s*\{\.(\w+)(?:\s+title=\"([^\"]*)\")?\}$", line)
             
             if fence_open:
-                # Simple format: :::: note
+                # Simple format: :::: note (only when type is present)
                 admonition = True
                 admonition_title = False
                 indent = fence_open.group(1)
@@ -2391,6 +2391,12 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
                     # resume processing for note
                     state = "note"
                     note = ''
+                continue
+            elif blank and state == "title" and title is not None:
+                # Empty line after getting title - transition to note content
+                logger.debug("empty line after title, starting note content")
+                state = "note"
+                note = ''
                 continue
             elif has_custom_title and (state == "div_title" or admonition_title):
                 # Skip lines in title processing when we have custom title
