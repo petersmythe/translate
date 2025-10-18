@@ -2318,7 +2318,7 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
 
         if not admonition:
             # scanning content looking for fenced div start
-            fence_open = re.search(r"^(\s*):::\s*(\w*)$", line)
+            fence_open = re.search(r"^(\s*):::+\s*(\w*)$", line)
             if not fence_open:
                 process += line + '\n'
                 continue
@@ -2330,6 +2330,10 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
                 fence_type = fence_open.group(2)
 
                 (type,title) = _fenced_div_to_mkdocs(fence_type)
+                
+                # Defensive programming: ensure type is never None
+                if type is None:
+                    type = 'info'  # fallback to info admonition
 
                 if title is None:
                     # expect title next (with or without optional divs markers)
@@ -2372,7 +2376,7 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
                 continue
 
             # scanning admonition for fence title break / close
-            fence = re.search(r"^(\s*):::\s*$", line)
+            fence = re.search(r"^(\s*):::+\s*$", line)
 
             if fence and admonition_title:
                 # expected fence break to end div_title
@@ -2429,12 +2433,14 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
             else:
                 # unexpected
                 logger.error(md_file + ':' + str(process.count('\n')) + ' unexpected ' + str(type) + ':' + str(title))
+                logger.error("  current line: " + repr(line))
+                logger.error("  current state: " + state)
                 logger.debug("  admonition", admonition)
                 logger.debug("  type", type)
                 logger.debug("  title", title)
                 logger.debug("  note", note)
                 logger.debug(process)
-                raise ValueError('pandoc markdown fenced div unclear ' + str(type) + " " + str(title) + "\n" + md_file + ':' + str(process.count('\n')))
+                raise ValueError('pandoc markdown fenced div unclear ' + str(type) + " " + str(title) + " on line: " + repr(line) + "\n" + md_file + ':' + str(process.count('\n')))
 
     if admonition:
         # fenced div was at end of file
