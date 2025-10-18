@@ -2368,37 +2368,22 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
 
         if not admonition:
             # scanning content looking for fenced div start
-            fence_open = re.search(r"^(\s*):::+\s*(\w+)$", line)  # Only match when there's a type
-            fence_attr = re.search(r"^(\s*):::+\s*\{\.(\w+)(?:\s+title=\"([^\"]*)\")?\}$", line)
-            
-            if fence_open:
-                # Simple format: :::: note (only when type is present)
+            fence_open = re.search(r"^(\s*):::+\s*(\w*)$", line)
+            if not fence_open:
+                process += line + '\n'
+                continue
+            else:
+                # admonition started
                 admonition = True
                 admonition_title = False
                 indent = fence_open.group(1)
                 fence_type = fence_open.group(2)
-                custom_title = None
-            elif fence_attr:
-                # Attribute format: :::: {.note title="Custom Title"}
-                admonition = True
-                admonition_title = False
-                indent = fence_attr.group(1)
-                fence_type = fence_attr.group(2)
-                custom_title = fence_attr.group(3)  # Could be None if no title attribute
-            else:
-                process += line + '\n'
-                continue
 
-            (type, title) = _fenced_div_to_mkdocs(fence_type)
-            
-            # If pandoc provided a custom title in attributes, use it
-            if custom_title is not None:
-                title = custom_title
-                has_custom_title = True
-                
-            # Defensive programming: ensure type is never None
-            if type is None:
-                type = 'info'  # fallback to info admonition
+                (type,title) = _fenced_div_to_mkdocs(fence_type)
+
+                # Defensive programming: ensure type is never None
+                if type is None:
+                    type = 'info'  # fallback to info admonition
 
             if title is None:
                 # expect title next (with or without optional divs markers)
@@ -2453,7 +2438,7 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
                 continue
 
             # scanning admonition for fence title break / close
-            fence = re.search(r"^(\s*):::\s*$", line)
+            fence = re.search(r"^(\s*):::+\s*$", line)
 
             if fence and admonition_title and not has_custom_title:
                 # expected fence break to end div_title (only when no custom title)
@@ -2517,24 +2502,25 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
                 continue
             else:
                 # unexpected
-                logger.error(md_file + ':' + str(process.count('\n')) + ' unexpected ' + str(type) + ':' + str(title))
-                logger.debug("  admonition", admonition)
-                logger.debug("  type", type)
-                logger.debug("  title", title)
-                logger.debug("  note", note)
-                logger.debug(process)
-                raise ValueError('pandoc markdown fenced div unclear ' + str(type) + " " + str(title) + "\n" + md_file + ':' + str(process.count('\n')))
+                logger.error(f"{md_file}:{process.count('\n')} unexpected {type}:{title}")
+                logger.error(f"  current line: {repr(line)}")
+                logger.error(f"  current state: {state}")
+                logger.error(f"  admonition: {admonition}")
+                logger.error(f"  type: {type}")
+                logger.error(f"  title: {title}")
+                logger.error(f"  note: {note}")
+                logger.error(f"  process:\n{process}")
+                raise ValueError(f"pandoc markdown fenced div unclear {type} {title} on line: {repr(line)}\n{md_file}:{process.count('\n')}")
 
     if admonition:
         # fenced div was at end of file
-        logger.error(md_file + ':' + str(process.count('\n')) + ' unexpected:')
-        logger.error("  admonition: %s", admonition)
-        logger.error("  type: %s", type)
-        logger.error("  title: %s", title)
-        logger.error("  note: %s", note)
-        logger.debug(process)
-        raise ValueError(
-            'Expected ::: to end fence dive ' + str(type) + ' ' + str(title) + ' ' + str(note) + "\n" + md_file + ':' + str(process.count('\n')))
+        logger.error(f"{md_file}:{process.count('\n')} unexpected EOF:")
+        logger.error(f"  admonition: {admonition}")
+        logger.error(f"  type: {type}")
+        logger.error(f"  title: {title}")
+        logger.error(f"  note: {note}")
+        logger.error(f"  process:\n{process}")
+        raise ValueError(f"Expected ::: to end fence div {type} {title} {note}\n{md_file}:{process.count('\n')}")
 
     return process
 
