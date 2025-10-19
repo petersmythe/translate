@@ -1417,12 +1417,13 @@ def _list_table_scan2(block: str) -> str:
                 # this is tricky!
                 if definition:
                     definition += "\n"+content.group(1)
-                    status = "cell"
+                    state = "cell"
                     continue
 
                 elif term:
                     term += content.group(1)
-                    status = "row"
+                    state = "row"
+                    continue
 
             raise ValueError(f"{file_path}: list-table, unexpected content:" + line)
 
@@ -1718,12 +1719,13 @@ def _rst_definition_list_from_list_table(file_path: str, value: str, arguments: 
                 # this is tricky!
                 if definition:
                     definition += "\n"+content.group(1)
-                    status = "cell"
+                    state = "cell"
                     continue
 
                 elif term:
                     term += content.group(1)
-                    status = "row"
+                    state = "row"
+                    continue
 
             raise ValueError(f"{file_path}: list-table, unexpected content:" + line)
 
