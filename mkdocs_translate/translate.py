@@ -1650,6 +1650,11 @@ def _rst_definition_list_from_list_table(file_path: str, value: str, arguments: 
 
     content_pattern = r"^\s{"+str(content_indentation)+r"}(.*)$"
     CONTENT = re.compile( content_pattern)
+    
+    # Pattern for nested bullet points within cells (more flexible indentation)
+    # This should match bullets that are indented more than row level but may not match exact cell content
+    nested_bullet_pattern = r"^\s{" + str(row_indentation + 1) + r",}[\*\-]\s+(.*)$"
+    NESTED_BULLET = re.compile(nested_bullet_pattern)
 
     # generate raw reStructuredText definition list
     processed = ''
@@ -1663,6 +1668,7 @@ def _rst_definition_list_from_list_table(file_path: str, value: str, arguments: 
         cell = CELL.match(line)
         cell_empty = CELL_EMPTY.match(line)
         content = CONTENT.match(line)
+        nested_bullet = NESTED_BULLET.match(line)
 
         if len(line.strip()) == 0:
             intended = 0
@@ -1780,6 +1786,10 @@ def _rst_definition_list_from_list_table(file_path: str, value: str, arguments: 
                 definition += "\n"+content.group(1)
                 continue
 
+            # BUGFIX: Handle nested bullet points within cell content
+            if nested_bullet:
+                definition += "\n* " + nested_bullet.group(1)
+                continue
             raise ValueError(f"{file_path}: list-table cell processing, unexpected content:" + line)
 
         else:
