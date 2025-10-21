@@ -2209,6 +2209,17 @@ def postprocess_rst_markdown(md_file: str, md_clean: str):
                 line,
                 flags=re.MULTILINE
             )
+        
+        # fix email links - add mailto: protocol
+        # Pattern matches email addresses in link targets
+        EMAIL_PATTERN = r'\[([^\]]+)\]\(([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\)'
+        if '@' in line and '](' in line:
+            line = re.sub(
+                EMAIL_PATTERN,
+                r'[\1](mailto:\2)',
+                line,
+                flags=re.MULTILINE
+            )
 
         # fix windows file path duplication
         line = re.sub(
