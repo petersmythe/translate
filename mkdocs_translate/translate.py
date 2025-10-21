@@ -310,7 +310,9 @@ def _doc_title(rst_path: str, doc_link: str) -> str:
         return anchors[title_key]
     else:
         label = _label(doc_link)
-        logger.warning(rst_path + ": broken doc '" + doc_link + "' title:" + label)
+        # Note: _doc_location() already warns if the file doesn't exist
+        # Only warn here if the file exists but title is not in anchors (shouldn't happen)
+        # This avoids duplicate warnings
         return label
 
 
@@ -679,9 +681,13 @@ class Link:
         if title_key in anchors:
             return anchors[title_key]
 
-        # placeholder label
+        # placeholder label - only warn if file doesn't exist
         label = _label(self.index)
-        logger.warning(self.base + ": broken doc '" + self.link + "' title:" + label)
+        
+        # Check if the file actually exists before warning
+        if not os.path.exists(self.file) or not os.path.isfile(self.file):
+            logger.warning(self.base + ": broken doc '" + self.link + "' title:" + label)
+        
         return label
 
     def nav_title(self):
