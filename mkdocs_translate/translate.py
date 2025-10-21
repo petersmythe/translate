@@ -395,19 +395,47 @@ def _ref_location(reference: str) -> str:
 def _ref_path(rst_path: str, reference: str) -> str:
     """
     Generate a relative link for the provided reference.
+    
+    Converts RST source paths to Markdown docs paths and calculates the relative URL.
+    This ensures cross-references work correctly in the converted documentation.
     """
     logging.debug("ref: " + reference)
-    ref_location = _ref_location(reference)
+    ref_location = _ref_location(reference)  # e.g., "\workflow.rst" or "/source/workflow.rst"
 
-    rst_location = os.path.relpath(os.path.dirname(rst_path), rst_folder)
-    if ref_location.startswith("/"):
+    # Strip leading slash or backslash if present (anchors may use either)
+    if ref_location.startswith("/") or ref_location.startswith("\\"):
         ref_location = ref_location[1:]
-
+    
+    # Current file's location relative to rst_folder
+    # e.g., "source/background.rst" -> "." if source is rst_folder
+    # or "subdir" if file is in rst_folder/subdir
+    rst_location = os.path.relpath(os.path.dirname(rst_path), rst_folder)
+    
+    # Target file location - strip rst_folder prefix if present
+    # e.g., "source/workflow.rst" -> "workflow.rst" if rst_folder is "source"
+    ref_target = ref_location
+    
+    # Check if ref_location starts with the rst_folder name
+    rst_folder_name = os.path.basename(rst_folder)
+    if ref_target.startswith(rst_folder_name + os.sep):
+        ref_target = ref_target[len(rst_folder_name) + 1:]
+    elif ref_target.startswith(rst_folder_name + "/"):
+        ref_target = ref_target[len(rst_folder_name) + 1:]
+    
+    # Remove .rst extension and add .md
+    if ref_target.endswith('.rst'):
+        ref_target = ref_target[:-4] + '.md'
+    
+    # Calculate relative path from current file to target file in the docs structure
+    # Both files will be in the same relative structure in the docs folder
+    link = os.path.relpath(ref_target, rst_location)
+    
+    # Normalize path separators to forward slashes for URLs (cross-platform compatibility)
+    link = link.replace(os.sep, '/')
+    
     logging.debug("   reference: " + rst_location)
     logging.debug("    absolute: " + ref_location)
-
-    link = os.path.relpath(ref_location, rst_location)
-
+    logging.debug("      target: " + ref_target)
     logging.debug("    relative: " + link)
     return link
 
