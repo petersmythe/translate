@@ -1071,8 +1071,11 @@ def _block_directive_code(file_path: str, value: str, arguments: dict[str, str],
 
     raw += f"{indent}\n"
 
+    # For nested directives, content must be indented MORE than the directive line
+    # Add 3 spaces beyond the directive indent
+    content_indent = indent + '   '
     for item in block.splitlines():
-        raw += item + '\n'
+        raw += content_indent + item + '\n'
 
     raw += indent + '\n'
     return raw
@@ -1993,6 +1996,7 @@ def _preprocess_rst_block_directive(path: str, text: str, directive: str,
 
     directive_raw = None
     indent = None  # indent while capturing
+    content_indent = None  # content indent level (for nested directives)
     state = 'scan'
 
     directive_output = None  # directive output
@@ -2016,6 +2020,7 @@ def _preprocess_rst_block_directive(path: str, text: str, directive: str,
                 directive_value = match.group(2)
                 directive_content = None
                 directive_arguments = {}
+                content_indent = None
 
                 logger.debug("    " + directive + ": " + directive_value)
                 continue
@@ -2048,9 +2053,21 @@ def _preprocess_rst_block_directive(path: str, text: str, directive: str,
                 # procssing directive content
                 directive_raw += line + '\n'
                 if blank:
-                    content = indent
+                    content = ''
                 else:
-                    content = line[len(indent):]
+                    # For the first non-blank content line, establish the content indent level
+                    if content_indent is None and not blank:
+                        content_indent = indented
+                        logger.debug(f'   content_indent set to {content_indent}')
+                    
+                    # Strip the content indent completely
+                    # The directive processing function will handle re-indenting if needed
+                    if content_indent is not None and indented >= content_indent:
+                        content = line[content_indent:]
+                    else:
+                        # Line is less indented than established content level
+                        content = line[len(indent):]
+                    
                 logger.debug('   content:' + content)
 
                 if directive_content is None or directive_content == '':
@@ -2077,6 +2094,7 @@ def _preprocess_rst_block_directive(path: str, text: str, directive: str,
                     directive_value = match.group(2)
                     directive_content = None
                     directive_arguments = {}
+                    content_indent = None
 
                     logger.debug("    " + directive + ": " + directive_value)
                     continue
@@ -2090,6 +2108,7 @@ def _preprocess_rst_block_directive(path: str, text: str, directive: str,
                     directive_value = None
                     directive_content = None
                     directive_arguments = None
+                    content_indent = None
 
                     continue
 
