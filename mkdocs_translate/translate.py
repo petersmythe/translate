@@ -505,22 +505,32 @@ def scan_download_rst(base_path: str, rst_file: str) -> set[str]:
 
 def _download_path(path: str, download: str) -> str:
     """
-    Generate a relative link, or download folder for external content.
+    Generate a relative link for downloadable files.
+    
+    Preserves the original relative path structure from RST to Markdown.
+    Files referenced in :download: directives maintain the same relative paths
+    in the converted documentation, since the file structure is preserved during migration.
     """
     reference = download
-    if reference[0:2] == './':
+    
+    # Strip ./ prefix if present (same directory reference)
+    if reference.startswith('./'):
         reference = reference[2:]
-
-    if reference[0:1] == '/':
-        # sphinx-build leading slash indicates root of source folder
+    
+    # Handle absolute paths (leading /)
+    if reference.startswith('/'):
+        # Sphinx leading slash indicates root of source folder
+        # Convert to relative path from current file
         reference = reference[1:]
-        for _ in range(path.count('/') - 1):
-            reference = '../' + reference
-
-    if (path.count('/') - 1 < reference.count('../')):
-        return os.path.join("download",os.path.basename(download))
-    else:
-        return reference
+        # Add ../ for each directory level we need to go up
+        depth = path.count('/') - 1
+        if depth > 0:
+            reference = '../' * depth + reference
+    
+    # Normalize path separators to forward slashes for URLs (cross-platform compatibility)
+    reference = reference.replace(os.sep, '/')
+    
+    return reference
 
 #
 # toctree scan
