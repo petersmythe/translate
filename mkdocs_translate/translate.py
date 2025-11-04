@@ -2263,6 +2263,15 @@ def postprocess_rst_markdown(md_file: str, md_clean: str):
         line = line.replace(r'\|', '|')
         line = line.replace(r'\@', '@')
 
+        # Fix indented HTML tags from RST raw:: html blocks
+        # Pandoc adds 4-space indentation which creates code blocks in Markdown
+        # Strip leading whitespace from HTML tags to prevent code block interpretation
+        HTML_TAG_PATTERN = re.compile(r'^\s{4}(</?(?:div|section|article|header|footer|nav|aside|span|p|ul|ol|li|table|thead|tbody|tr|td|th|figure|figcaption|blockquote|pre|code|a|img|video|audio|iframe|canvas|svg)[^>]*>)\s*$')
+        html_match = HTML_TAG_PATTERN.match(line)
+        if html_match:
+            # Remove the indentation to prevent code block interpretation
+            line = html_match.group(1)
+
         # header anchor causes conflicts with use of mkdocs-macros-plugin
         # adjust {#anchor} to {: #anchor }
 
