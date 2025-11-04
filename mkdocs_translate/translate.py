@@ -1125,8 +1125,8 @@ def _preprocess_rst_toctree(path: str, text: str) -> str:
     process = ''
     for line in text.splitlines():
         if line.startswith('.. toctree::'):
-            # directive started
-            toctree = '<div class="grid cards" markdown>\n\n'
+            # directive started - use raw HTML to preserve grid cards through Pandoc
+            toctree = '.. raw:: html\n\n   <div class="grid cards" markdown>\n\n'
             hidden = False
             continue
 
@@ -1163,7 +1163,7 @@ def _preprocess_rst_toctree(path: str, text: str) -> str:
             else:
                 # end directive
                 if not hidden:
-                    process += toctree + '\n</div>\n\n'
+                    process += toctree + '\n.. raw:: html\n\n   </div>\n\n'
 
                 process += line + '\n'
                 toctree = None
@@ -1174,7 +1174,7 @@ def _preprocess_rst_toctree(path: str, text: str) -> str:
     if toctree != None:
         # end directive at end of file
         if not hidden:
-            process += toctree + '\n</div>\n\n'
+            process += toctree + '\n.. raw:: html\n\n   </div>\n\n'
 
     return process
 
