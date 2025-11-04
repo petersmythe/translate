@@ -1175,8 +1175,8 @@ def _preprocess_rst_toctree(path: str, text: str) -> str:
     process = ''
     for line in text.splitlines():
         if line.startswith('.. toctree::'):
-            # directive started - use raw markdown to ensure table passes through pandoc correctly
-            toctree = '.. code-block:: raw_markdown\n\n   | Section | Description |\n   |---------|-------------|\n'
+            # directive started - use raw HTML to preserve grid cards through Pandoc
+            toctree = '.. raw:: html\n\n   <div class="grid cards" markdown>\n\n'
             hidden = False
             continue
 
@@ -1205,19 +1205,15 @@ def _preprocess_rst_toctree(path: str, text: str) -> str:
                             if match.link_rst not in matched_links:
                                 # wildcard only lists documents not already covered
                                 matched_links.add(match.link_rst)
-                                title = match.title()
-                                description = title  # Use title as description for now
-                                toctree += f"   | [{title}]({match.link_rst}) | {description} |\n"
+                                toctree += f"-   `{match.title()} <{match.link_rst}>`_\n"
                 else:
                     if parse.link_rst not in matched_links:
                         matched_links.add(parse.link_rst)
-                        title = parse.title()
-                        description = title  # Use title as description for now  
-                        toctree += f"   | [{title}]({parse.link_rst}) | {description} |\n"
+                        toctree += f"-   `{parse.title()} <{parse.link_rst}>`_\n"
             else:
                 # end directive
                 if not hidden:
-                    process += toctree + '\n'
+                    process += toctree + '\n.. raw:: html\n\n   </div>\n\n'
 
                 process += line + '\n'
                 toctree = None
@@ -1228,7 +1224,7 @@ def _preprocess_rst_toctree(path: str, text: str) -> str:
     if toctree != None:
         # end directive at end of file
         if not hidden:
-            process += toctree + '\n'
+            process += toctree + '\n.. raw:: html\n\n   </div>\n\n'
 
     return process
 
