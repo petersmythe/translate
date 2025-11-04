@@ -2124,6 +2124,7 @@ def postprocess_rst_markdown(md_file: str, md_clean: str):
     clean = ''
     code = None
     code_language = None
+    skip_next_closing_fence = False  # Track if we need to skip the next ``` line
 
     HEADER_ANCHOR = re.compile(r'^(#+) (.*)\s+{#(.+)\s*}$')
 
@@ -2131,11 +2132,22 @@ def postprocess_rst_markdown(md_file: str, md_clean: str):
 
         match = re.search(r"^(.*)```(.*)$", line)
         if match:
+            # Check if this is the closing fence we need to skip (for Pandoc raw HTML blocks)
+            if skip_next_closing_fence and code == None and match.group(2).strip() == '':
+                skip_next_closing_fence = False
+                continue  # Skip this closing fence
+                
             if code == None:
                 # starts code-block
                 code_language = match.group(2)
                 if "raw_markdown" in code_language:
                     code = ''
+                elif "{=html}" in code_language:
+                    # Pandoc raw HTML block marker - skip the marker and the closing fence
+                    # These markers (```{=html} ... ```) are not understood by MkDocs/Python-Markdown
+                    # and would be rendered as code blocks, breaking HTML features like grid cards
+                    skip_next_closing_fence = True
+                    continue  # Skip the opening marker line
                 else:
                     code = line + '\n'
             else:
