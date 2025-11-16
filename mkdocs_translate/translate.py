@@ -79,15 +79,15 @@ def init_config(override_path: str) -> None:
 
     config = load_config(override_path)
 
-    docs_folder = os.path.normpath(os.path.join(config['project_folder'], config['docs_folder']))
-    upload_folder = os.path.normpath(os.path.join(config['project_folder'], config['build_folder'], config['upload_folder']))
-    convert_folder = os.path.normpath(os.path.join(config['project_folder'], config['build_folder'], config['convert_folder']))
-    download_folder = os.path.normpath(os.path.join(config['project_folder'], config['build_folder'], config['download_folder']))
-    anchor_file = os.path.normpath(os.path.join(convert_folder, config['anchor_file']))
+    docs_folder = os.path.normpath(os.path.join(config['project_folder'], config['docs_folder'])).replace('\\', '/')
+    upload_folder = os.path.normpath(os.path.join(config['project_folder'], config['build_folder'], config['upload_folder'])).replace('\\', '/')
+    convert_folder = os.path.normpath(os.path.join(config['project_folder'], config['build_folder'], config['convert_folder'])).replace('\\', '/')
+    download_folder = os.path.normpath(os.path.join(config['project_folder'], config['build_folder'], config['download_folder'])).replace('\\', '/')
+    anchor_file = os.path.normpath(os.path.join(convert_folder, config['anchor_file'])).replace('\\', '/')
 
     rst_folder = docs_folder
     if 'rst_folder' in config:
-        rst_folder = os.path.normpath(os.path.join(config['project_folder'], config['rst_folder']))
+        rst_folder = os.path.normpath(os.path.join(config['project_folder'], config['rst_folder'])).replace('\\', '/')
 
     if not os.path.exists(docs_folder):
         logger.debug(f"The docs folder does not exist at location: {docs_folder}")
@@ -835,8 +835,13 @@ def convert_rst(rst_file: str) -> str:
     if md_file.startswith(rst_folder) and rst_folder != docs_folder:
         md_file = md_file.replace(rst_folder, docs_folder, 1)
 
+    # Ensure all paths use forward slashes for regex
+    rst_file_fwd = rst_file.replace('\\', '/')
+    rst_folder_fwd = config['rst_folder'].replace('\\', '/')
+    convert_folder_fwd = convert_folder.replace('\\', '/')
+
     # temp file for processing
-    md_tmp_file = re.sub("^" + config['rst_folder'] + "/", convert_folder + '/', rst_file)
+    md_tmp_file = re.sub("^" + rst_folder_fwd + "/", convert_folder_fwd + '/', rst_file_fwd)
     md_tmp_file = md_tmp_file.replace(".txt", ".md")
     md_tmp_file = md_tmp_file.replace(".rst", ".md")
     md_tmp_file = md_tmp_file.replace(".md", ".tmp.md")
