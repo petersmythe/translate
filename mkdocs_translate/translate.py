@@ -2506,26 +2506,37 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
                 logger.debug("note:" + line)
                 continue
             else:
-                # unexpected
-                logger.error(f"{md_file}:{process.count('\n')} unexpected {type}:{title}")
-                logger.error(f"  current line: {repr(line)}")
-                logger.error(f"  current state: {state}")
+                # unexpected: log error and skip this fenced div, continue processing
+                logger.error(f"[mkdocs-translate] Fenced div parsing error in {md_file}:{process.count('\n')}")
+                logger.error(f"  Problematic fenced div: type={type}, title={title}")
+                logger.error(f"  Current line: {repr(line)}")
+                logger.error(f"  Current state: {state}")
                 logger.error(f"  admonition: {admonition}")
-                logger.error(f"  type: {type}")
-                logger.error(f"  title: {title}")
                 logger.error(f"  note: {note}")
-                logger.error(f"  process:\n{process}")
-                raise ValueError(f"pandoc markdown fenced div unclear {type} {title} on line: {repr(line)}\n{md_file}:{process.count('\n')}")
+                logger.error(f"  process so far:\n{process}")
+                # Optionally, add a placeholder in output to mark skipped div
+                process += f"\n<!-- Skipped problematic fenced div: type={type}, title={title} -->\n"
+                # Reset state and continue
+                admonition = False
+                admonition_title = False
+                has_custom_title = False
+                type = None
+                indent = ''
+                title = None
+                note = None
+                state = "scan"
+                continue
 
     if admonition:
         # fenced div was at end of file
-        logger.error(f"{md_file}:{process.count('\n')} unexpected EOF:")
+        logger.error(f"[mkdocs-translate] Unexpected EOF in fenced div in {md_file}:{process.count('\n')}")
         logger.error(f"  admonition: {admonition}")
         logger.error(f"  type: {type}")
         logger.error(f"  title: {title}")
         logger.error(f"  note: {note}")
-        logger.error(f"  process:\n{process}")
-        raise ValueError(f"Expected ::: to end fence div {type} {title} {note}\n{md_file}:{process.count('\n')}")
+        logger.error(f"  process so far:\n{process}")
+        process += f"\n<!-- Skipped incomplete fenced div at EOF: type={type}, title={title} -->\n"
+        # Do not raise, just skip and continue
 
     return process
 
