@@ -852,22 +852,13 @@ def convert_rst(rst_file: str) -> str:
     if md_file.startswith(rst_folder) and rst_folder != docs_folder:
         md_file = md_file.replace(rst_folder, docs_folder, 1)
 
-    # Ensure all paths use forward slashes for regex
-    rst_file_fwd = rst_file.replace('\\', '/')
-    rst_folder_fwd = config['rst_folder'].replace('\\', '/')
-    convert_folder_fwd = convert_folder.replace('\\', '/')
-
     # temp file for processing
-<<<<<<< HEAD
     # Use os.path operations instead of regex for path manipulation
     if rst_file.startswith(config['rst_folder']):
         relative_path = rst_file[len(config['rst_folder']):].lstrip('/\\')
         md_tmp_file = os.path.join(convert_folder, relative_path)
     else:
         md_tmp_file = os.path.join(convert_folder, os.path.basename(rst_file))
-=======
-    md_tmp_file = re.sub("^" + rst_folder_fwd + "/", convert_folder_fwd + '/', rst_file_fwd)
->>>>>>> nested-table-deindent
     md_tmp_file = md_tmp_file.replace(".txt", ".md")
     md_tmp_file = md_tmp_file.replace(".rst", ".md")
     md_tmp_file = md_tmp_file.replace(".md", ".tmp.md")
@@ -2589,20 +2580,11 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
 
         if not admonition:
             # scanning content looking for fenced div start
-<<<<<<< HEAD
             fence_open = re.search(r"^(\s*):::+\s*(\w+)$", line)  # Only match when there's a type
             fence_attr = re.search(r"^(\s*):::+\s*\{\.(\w+)(?:\s+title=\"([^\"]*)\")?\}$", line)
             
             if fence_open:
                 # Simple format: :::: note (only when type is present)
-=======
-            fence_open = re.search(r"^(\s*):::+\s*(\w*)$", line)
-            if not fence_open:
-                process += line + '\n'
-                continue
-            else:
-                # admonition started
->>>>>>> nested-table-deindent
                 admonition = True
                 admonition_title = False
                 indent = fence_open.group(1)
@@ -2630,13 +2612,6 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
             if type is None:
                 type = 'info'  # fallback to info admonition
 
-<<<<<<< HEAD
-=======
-                # Defensive programming: ensure type is never None
-                if type is None:
-                    type = 'info'  # fallback to info admonition
-
->>>>>>> nested-table-deindent
             if title is None:
                 # expect title next (with or without optional divs markers)
                 state = 'title'
@@ -2753,7 +2728,6 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
                 logger.debug("note:" + line)
                 continue
             else:
-<<<<<<< HEAD
                 # unexpected
                 logger.error(md_file + ':' + str(process.count('\n')) + ' unexpected ' + str(type) + ':' + str(title))
                 logger.error("  current line: " + repr(line))
@@ -2775,39 +2749,6 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
         logger.debug(process)
         raise ValueError(
             'Expected ::: to end fence dive ' + str(type) + ' ' + str(title) + ' ' + str(note) + "\n" + md_file + ':' + str(process.count('\n')))
-=======
-                # unexpected: log error and skip this fenced div, continue processing
-                logger.error(f"[mkdocs-translate] Fenced div parsing error in {md_file}:{process.count('\n')}")
-                logger.error(f"  Problematic fenced div: type={type}, title={title}")
-                logger.error(f"  Current line: {repr(line)}")
-                logger.error(f"  Current state: {state}")
-                logger.error(f"  admonition: {admonition}")
-                logger.error(f"  note: {note}")
-                logger.error(f"  process so far:\n{process}")
-                # Optionally, add a placeholder in output to mark skipped div
-                process += f"\n<!-- Skipped problematic fenced div: type={type}, title={title} -->\n"
-                # Reset state and continue
-                admonition = False
-                admonition_title = False
-                has_custom_title = False
-                type = None
-                indent = ''
-                title = None
-                note = None
-                state = "scan"
-                continue
-
-    if admonition:
-        # fenced div was at end of file
-        logger.error(f"[mkdocs-translate] Unexpected EOF in fenced div in {md_file}:{process.count('\n')}")
-        logger.error(f"  admonition: {admonition}")
-        logger.error(f"  type: {type}")
-        logger.error(f"  title: {title}")
-        logger.error(f"  note: {note}")
-        logger.error(f"  process so far:\n{process}")
-        process += f"\n<!-- Skipped incomplete fenced div at EOF: type={type}, title={title} -->\n"
-        # Do not raise, just skip and continue
->>>>>>> nested-table-deindent
 
     return process
 
