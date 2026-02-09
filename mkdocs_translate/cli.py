@@ -279,16 +279,29 @@ def migrate(
     The rst directives are simplified prior to conversion following our writing guide:
     gui-label, menuselection, file, command
     """
+    print(f"[ENTRY] migrate() called with rst_path={rst_path}", flush=True)
+    print(f"[ENTRY] migrate() about to call check_folders()", flush=True)
     check_folders()
+    print(f"[ENTRY] migrate() check_folders() completed", flush=True)
+    print(f"[ENTRY] migrate() about to call init_anchors()", flush=True)
     init_anchors()
+    print(f"[ENTRY] migrate() init_anchors() completed", flush=True)
 
     if not rst_path:
         rst_glob = mkdocs_translate.translate.rst_folder + "/**/*.rst"
         rst_path = [rst_glob]
 
+    print(f"[DEBUG] migrate() rst_path = {rst_path}", flush=True)
     for rst_file in collect_paths(rst_path, 'rst', True):
-        md_file = convert_rst(rst_file)
-        print(md_file)
+        print(f"[DEBUG] About to convert: {rst_file}", flush=True)
+        try:
+            md_file = convert_rst(rst_file)
+            print(md_file)
+        except Exception as e:
+            print(f"[ERROR] Exception in convert_rst for {rst_file}: {type(e).__name__}: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
+            raise
 
 
 @app.command()

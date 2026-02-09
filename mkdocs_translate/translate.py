@@ -131,7 +131,9 @@ def load_anchors(anchor_txt: str) -> dict[str, str]:
 def init_anchors():
     global anchors
     global anchor_file
+    print(f"[ENTRY] init_anchors() called", flush=True)
     anchors = load_anchors(anchor_file)
+    print(f"[ENTRY] init_anchors() loaded {len(anchors)} anchors", flush=True)
     logging.debug("anchors loaded:" + str(len(anchors)))
 
 
@@ -140,6 +142,7 @@ def collect_path(path: str, extension: str, include: bool) -> list[str]:
     Collect all the files with an extension from a path.
     If the path is a single file the extension should match.
     """
+    print(f"[ENTRY] collect_path() called: path={path}, extension={extension}, include={include}", flush=True)
     files = []
     if '*' in path:
         for file in glob.glob(path, recursive=True):
@@ -167,11 +170,13 @@ def collect_paths(paths: list[str], extension: str, include: bool ) -> list[str]
     Collect all the files with an extension from a list of paths.
     If the path is a single file the extension should match.
     """
+    print(f"[ENTRY] collect_paths() called: paths={paths}, extension={extension}, include={include}", flush=True)
     files = []
 
     for path in paths:
         files.extend(collect_path(path, extension, include))
 
+    print(f"[ENTRY] collect_paths() returning {len(files)} files", flush=True)
     return files
 
 #
