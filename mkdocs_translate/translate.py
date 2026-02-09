@@ -1081,8 +1081,6 @@ def preprocess_rst(rst_file: str, rst_prep: str) -> str:
         else:
             logger.info(f"[v0.6.3] No nested tables found in '{rst_file}'")
         logger.info(f"[v0.6.3] === END: Nested table preprocessing complete ===")
-        else:
-            logger.debug(f"{rst_file}: No nested tables found")
     except ValueError as e:
         logger.error(f"{rst_file}: Failed to de-indent nested tables: {e}")
         raise  # Fail migration as required
