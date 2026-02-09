@@ -260,6 +260,52 @@ RST with indented tables
 
 ### 📋 Phase 8: Final Commit & Merge - IN PROGRESS
 
+**Status:** 🔄 IN PROGRESS
+
+**Steps to Complete:**
+
+1. ⏳ **Verify Branch Status**
+   - Confirm `nested-table-deindent` branch has all 4 commits
+   - Verify clean working tree (no uncommitted changes except temp files)
+   - Check that `geoserver-minimal` is default branch
+
+2. ⏳ **Clean Up Temporary Files** (Optional)
+   - Do NOT commit: source/test_*.rst, docs/test_*.md, test_detection.py
+   - Do NOT commit: tmp_*.md files
+
+3. ⏳ **Create Pull Request** (If using GitHub)
+   - Title: "Add nested table de-indentation preprocessing (v0.6.2)"
+   - Description: Features, testing results, design decisions
+   - Target: `geoserver-minimal` branch (default)
+   - Link to issue if applicable
+
+4. ⏳ **Merge to geoserver-minimal**
+   - Use squash merge (combines all 4 commits into 1)
+   - OR keep individual commits if history is preferred
+   - Verify merge completes without conflicts
+
+5. ⏳ **Update Tags** (Optional)
+   - Create tag: `v0.6.2`
+   - Message: "Nested table de-indentation preprocessing"
+
+6. ⏳ **Verify Production Branch**
+   - Confirm code on merged branch
+   - Run tests one more time
+   - Document in release notes
+
+**Commit History on Branch:**
+- `9c71373` - Complete Phase 7: Documentation and unit tests
+- `439505b` - Add nested table de-indentation preprocessing
+- `c20f6e9` - Add implementation plan for nested table de-indentation
+- `d23d7df` - Update implementation plan with Phase 5-6 completion
+
+**Alternative: Direct Merge to main**
+If merging directly to `main` instead of `geoserver-minimal`:
+1. Switch to `main` branch
+2. Merge `nested-table-deindent` with `--no-ff` flag
+3. Create merge commit with summary message
+4. Tag version 0.6.2 on main
+
 ---
 
 ## Success Metrics
