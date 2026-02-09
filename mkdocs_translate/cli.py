@@ -397,3 +397,11 @@ def main(
     sys.stderr.write(f"[STDERR-MAIN] About to return from main()\n")
     sys.stderr.flush()
     return
+
+
+if __name__ == "__main__":
+    import sys
+    print(f"[MODULE-MAIN] cli.py running as __main__, sys.argv={sys.argv}", flush=True)
+    sys.stderr.write(f"[STDERR-MODULE-MAIN] cli.py running as __main__, about to call app()\n")
+    sys.stderr.flush()
+    app()
