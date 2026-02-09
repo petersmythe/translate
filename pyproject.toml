@@ -36,6 +36,9 @@ Changelog = "https://github.com/jodygarnett/translate/blob/main/CHANGES"
 [project.scripts]
 mkdocs_translate = "mkdocs_translate.cli:app"
 
+[tool.setuptools]
+packages = ["mkdocs_translate"]
+
 [tool.setuptools.dynamic]
 version = {attr = "mkdocs_translate.__version__"}
 

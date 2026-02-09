@@ -79,15 +79,15 @@ def init_config(override_path: str) -> None:
 
     config = load_config(override_path)
 
-    docs_folder = os.path.normpath(os.path.join(config['project_folder'], config['docs_folder']))
-    upload_folder = os.path.normpath(os.path.join(config['project_folder'], config['build_folder'], config['upload_folder']))
-    convert_folder = os.path.normpath(os.path.join(config['project_folder'], config['build_folder'], config['convert_folder']))
-    download_folder = os.path.normpath(os.path.join(config['project_folder'], config['build_folder'], config['download_folder']))
-    anchor_file = os.path.normpath(os.path.join(convert_folder, config['anchor_file']))
+    docs_folder = os.path.normpath(os.path.join(config['project_folder'], config['docs_folder'])).replace('\\', '/')
+    upload_folder = os.path.normpath(os.path.join(config['project_folder'], config['build_folder'], config['upload_folder'])).replace('\\', '/')
+    convert_folder = os.path.normpath(os.path.join(config['project_folder'], config['build_folder'], config['convert_folder'])).replace('\\', '/')
+    download_folder = os.path.normpath(os.path.join(config['project_folder'], config['build_folder'], config['download_folder'])).replace('\\', '/')
+    anchor_file = os.path.normpath(os.path.join(convert_folder, config['anchor_file'])).replace('\\', '/')
 
     rst_folder = docs_folder
     if 'rst_folder' in config:
-        rst_folder = os.path.normpath(os.path.join(config['project_folder'], config['rst_folder']))
+        rst_folder = os.path.normpath(os.path.join(config['project_folder'], config['rst_folder'])).replace('\\', '/')
 
     if not os.path.exists(docs_folder):
         logger.debug(f"The docs folder does not exist at location: {docs_folder}")
@@ -852,13 +852,22 @@ def convert_rst(rst_file: str) -> str:
     if md_file.startswith(rst_folder) and rst_folder != docs_folder:
         md_file = md_file.replace(rst_folder, docs_folder, 1)
 
+    # Ensure all paths use forward slashes for regex
+    rst_file_fwd = rst_file.replace('\\', '/')
+    rst_folder_fwd = config['rst_folder'].replace('\\', '/')
+    convert_folder_fwd = convert_folder.replace('\\', '/')
+
     # temp file for processing
+<<<<<<< HEAD
     # Use os.path operations instead of regex for path manipulation
     if rst_file.startswith(config['rst_folder']):
         relative_path = rst_file[len(config['rst_folder']):].lstrip('/\\')
         md_tmp_file = os.path.join(convert_folder, relative_path)
     else:
         md_tmp_file = os.path.join(convert_folder, os.path.basename(rst_file))
+=======
+    md_tmp_file = re.sub("^" + rst_folder_fwd + "/", convert_folder_fwd + '/', rst_file_fwd)
+>>>>>>> nested-table-deindent
     md_tmp_file = md_tmp_file.replace(".txt", ".md")
     md_tmp_file = md_tmp_file.replace(".rst", ".md")
     md_tmp_file = md_tmp_file.replace(".md", ".tmp.md")
@@ -903,6 +912,154 @@ def convert_rst(rst_file: str) -> str:
     return md_file
 
 
+def detect_nested_tables(rst_content: str, file_path: str = None) -> list[tuple[int, int, int]]:
+    """
+    Detect indented list-table directives in RST content.
+    
+    Args:
+        rst_content: The RST file content as string
+        file_path: Optional file path for logging
+    
+    Returns:
+        List of (start_line, end_line, indent_level) tuples for each nested table.
+        Line numbers are 0-based.
+        
+    Notes:
+        - Only detects tables with indentation > 0
+        - Skips tables inside literal code blocks (:: blocks)
+        - Handles tabs (converted to 3 spaces)
+    """
+    lines = rst_content.split('\n')
+    detections = []
+    in_code_block = False
+    i = 0
+    
+    while i < len(lines):
+        line = lines[i]
+        
+        # Check for list-table directive FIRST (before code block check)
+        # because list-table lines end with :: which would trigger code block flag
+        if '.. list-table::' in line:
+            # Measure indentation (tabs = 3 spaces)
+            indent_str = line[:len(line) - len(line.lstrip())]
+            indent_level = len(indent_str.replace('\t', '   '))
+            
+            # Only process indented tables (nested within other structures)
+            if indent_level > 0 and not in_code_block:
+                start_line = i
+                logger.debug(f"{file_path}: Found nested list-table at line {i+1} with {indent_level} spaces indent")
+                
+                # Find the end of this table block
+                # Table continues while lines are indented >= indent_level or blank
+                i += 1
+                while i < len(lines):
+                    next_line = lines[i]
+                    if len(next_line.strip()) == 0:
+                        # Blank line - continue
+                        i += 1
+                        continue
+                    
+                    next_indent_str = next_line[:len(next_line) - len(next_line.lstrip())]
+                    next_indent = len(next_indent_str.replace('\t', '   '))
+                    
+                    if next_indent >= indent_level:
+                        # Still part of the table
+                        i += 1
+                    else:
+                        # Dedented - end of table
+                        break
+                
+                end_line = i - 1
+                detections.append((start_line, end_line, indent_level))
+                logger.debug(f"{file_path}: Table extends from line {start_line+1} to {end_line+1}")
+                continue
+        
+        # Track literal code blocks (introduced by lines ending with ::)
+        # BUT exclude directive lines (which start with ..)
+        # Content after :: is treated as literal until dedented
+        if line.rstrip().endswith('::') and not line.lstrip().startswith('..'):
+            in_code_block = True
+            i += 1
+            continue
+        
+        # Check if we're exiting a code block (dedented line)
+        if in_code_block:
+            indent_str = line[:len(line) - len(line.lstrip())]
+            if len(line.strip()) > 0 and len(indent_str) == 0:
+                in_code_block = False
+        
+        i += 1
+    
+    if detections and file_path:
+        logger.info(f"{file_path}: Found {len(detections)} nested table(s)")
+    
+    return detections
+
+
+def deindent_nested_table(rst_content: str, detections: list[tuple[int, int, int]], 
+                          file_path: str = None) -> str:
+    """
+    Remove indentation from detected nested list-tables and add documentation comments.
+    
+    Args:
+        rst_content: Original RST content
+        detections: List from detect_nested_tables()
+        file_path: Optional file path for logging/error messages
+    
+    Returns:
+        Modified RST content with de-indented tables
+        
+    Raises:
+        ValueError: If de-indentation fails (malformed table structure)
+        
+    Notes:
+        - Processes tables in reverse order (preserve line numbers)
+        - Adds HTML comment after each table
+        - Validates table structure before/after
+    """
+    lines = rst_content.split('\n')
+    
+    # Process in reverse order to preserve line numbers
+    for start_line, end_line, indent_level in reversed(detections):
+        logger.debug(f"{file_path}: De-indenting table at lines {start_line+1}-{end_line+1} (removing {indent_level} spaces)")
+        
+        # Extract and de-indent table lines
+        deindented_lines = []
+        for line_num in range(start_line, end_line + 1):
+            line = lines[line_num]
+            
+            # Handle blank lines
+            if len(line.strip()) == 0:
+                deindented_lines.append('')
+                continue
+            
+            # Calculate actual indentation (tabs = 3 spaces)
+            indent_str = line[:len(line) - len(line.lstrip())]
+            actual_indent = len(indent_str.replace('\t', '   '))
+            
+            # Validate: line must have at least indent_level spaces
+            if actual_indent < indent_level:
+                raise ValueError(
+                    f"File {file_path}, line {line_num+1}: Cannot remove {indent_level} spaces - "
+                    f"line only has {actual_indent} spaces"
+                )
+            
+            # Remove indentation by reconstructing from lstrip
+            # We need to remove exactly indent_level spaces worth of indentation
+            remaining_indent = actual_indent - indent_level
+            deindented_line = (' ' * remaining_indent) + line.lstrip()
+            deindented_lines.append(deindented_line)
+        
+        # Create documentation comment
+        comment = f"<!-- mkdocs-translate: removed {indent_level} spaces indentation -->"
+        
+        # Replace the original block with de-indented version + comment
+        lines[start_line:end_line+1] = deindented_lines + [comment]
+    
+    logger.info(f"{file_path}: De-indented {len(detections)} nested table(s)")
+    return '\n'.join(lines)
+
+
 def preprocess_rst(rst_file: str, rst_prep: str) -> str:
     """
     Pre-process rst files to simplify sphinx-build directives for pandoc conversion
@@ -913,6 +1070,16 @@ def preprocess_rst(rst_file: str, rst_prep: str) -> str:
     except UnicodeDecodeError as e:
         logger.error(f"Cannot preprocess {rst_file} due to encoding issues: {e}")
         raise
+
+    # De-indent nested list-tables FIRST (before other processing)
+    # This must happen before block directive processing to ensure proper structure
+    try:
+        nested_tables = detect_nested_tables(text, rst_file)
+        if nested_tables:
+            text = deindent_nested_table(text, nested_tables, rst_file)
+    except ValueError as e:
+        logger.error(f"{rst_file}: Failed to de-indent nested tables: {e}")
+        raise  # Fail migration as required
 
     # process toc_tree directive into a list of links
     if '.. toctree::' in text:
@@ -2422,11 +2589,20 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
 
         if not admonition:
             # scanning content looking for fenced div start
+<<<<<<< HEAD
             fence_open = re.search(r"^(\s*):::+\s*(\w+)$", line)  # Only match when there's a type
             fence_attr = re.search(r"^(\s*):::+\s*\{\.(\w+)(?:\s+title=\"([^\"]*)\")?\}$", line)
             
             if fence_open:
                 # Simple format: :::: note (only when type is present)
+=======
+            fence_open = re.search(r"^(\s*):::+\s*(\w*)$", line)
+            if not fence_open:
+                process += line + '\n'
+                continue
+            else:
+                # admonition started
+>>>>>>> nested-table-deindent
                 admonition = True
                 admonition_title = False
                 indent = fence_open.group(1)
@@ -2454,6 +2630,13 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
             if type is None:
                 type = 'info'  # fallback to info admonition
 
+<<<<<<< HEAD
+=======
+                # Defensive programming: ensure type is never None
+                if type is None:
+                    type = 'info'  # fallback to info admonition
+
+>>>>>>> nested-table-deindent
             if title is None:
                 # expect title next (with or without optional divs markers)
                 state = 'title'
@@ -2570,6 +2753,7 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
                 logger.debug("note:" + line)
                 continue
             else:
+<<<<<<< HEAD
                 # unexpected
                 logger.error(md_file + ':' + str(process.count('\n')) + ' unexpected ' + str(type) + ':' + str(title))
                 logger.error("  current line: " + repr(line))
@@ -2591,6 +2775,39 @@ def _postprocess_pandoc_fenced_divs(md_file: str, text: str) -> str:
         logger.debug(process)
         raise ValueError(
             'Expected ::: to end fence dive ' + str(type) + ' ' + str(title) + ' ' + str(note) + "\n" + md_file + ':' + str(process.count('\n')))
+=======
+                # unexpected: log error and skip this fenced div, continue processing
+                logger.error(f"[mkdocs-translate] Fenced div parsing error in {md_file}:{process.count('\n')}")
+                logger.error(f"  Problematic fenced div: type={type}, title={title}")
+                logger.error(f"  Current line: {repr(line)}")
+                logger.error(f"  Current state: {state}")
+                logger.error(f"  admonition: {admonition}")
+                logger.error(f"  note: {note}")
+                logger.error(f"  process so far:\n{process}")
+                # Optionally, add a placeholder in output to mark skipped div
+                process += f"\n<!-- Skipped problematic fenced div: type={type}, title={title} -->\n"
+                # Reset state and continue
+                admonition = False
+                admonition_title = False
+                has_custom_title = False
+                type = None
+                indent = ''
+                title = None
+                note = None
+                state = "scan"
+                continue
+
+    if admonition:
+        # fenced div was at end of file
+        logger.error(f"[mkdocs-translate] Unexpected EOF in fenced div in {md_file}:{process.count('\n')}")
+        logger.error(f"  admonition: {admonition}")
+        logger.error(f"  type: {type}")
+        logger.error(f"  title: {title}")
+        logger.error(f"  note: {note}")
+        logger.error(f"  process so far:\n{process}")
+        process += f"\n<!-- Skipped incomplete fenced div at EOF: type={type}, title={title} -->\n"
+        # Do not raise, just skip and continue
+>>>>>>> nested-table-deindent
 
     return process
 

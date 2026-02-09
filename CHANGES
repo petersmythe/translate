@@ -1,3 +1,11 @@
+0.6.2 by Peter Smythe
+
+* add nested table de-indentation preprocessing
+* fix indented list-table directives in numbered lists and admonitions
+* detect and remove indentation before Pandoc conversion
+* insert HTML comments documenting transformation for each table
+* comprehensive test suite for nested table scenarios
+
 0.3.0 by Jody Garnett
 
 * setup example sphinx-build project

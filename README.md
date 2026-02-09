@@ -129,13 +129,19 @@ A working [example](example) is provided to be adapted for your project:
 
 GeoServer is used as an example here, which is a maven project with a convention of `target` for temporary files.
 
+### Key Features
+
+- **Nested Table De-indentation** (v0.6.2+): Automatically detects and fixes indented `.. list-table::` directives that fail to convert properly via Pandoc. Tables nested in numbered lists, admonitions, and other block structures now render correctly in Markdown output.
+
+### Conversion Process
+
 1. Initial setup of ``docs`` folder structure (so all the images from ``source`` folder are present):
    
     ```
     mkdocs_translate init
     ```
    
-4.  To scan ``rst`` files before conversion:
+2.  To scan ``rst`` files before conversion:
     
     ```
     mkdocs_translate scan
@@ -150,18 +156,31 @@ GeoServer is used as an example here, which is a maven project with a convention
     mkdocs_translate scan
     ```
 
-5. To migrate content from ``rst`` to ``md``:
+3. To migrate content from ``rst`` to ``md``:
    
     ```
     mkdocs_translate migrate
     ```
     
+   During migration, the Nested Table De-indentation preprocessing automatically:
+   - Detects indented `.. list-table::` directives
+   - Removes indentation and inserts HTML comments documenting the transformation
+   - Enables proper Pandoc conversion to Markdown pipe-tables
    
-6. Review this content you may find individual files to fix.
+   To reconvert specific files:
+   
+   ```
+   mkdocs_translate migrate source/introduction/license.rst
+   mkdocs_translate migrate source/introduction/**/*.rst
+   ```
+
+4. Review this content you may find individual files to fix.
 
     Some formatting is easier to fix in the `rst` files before conversion:
    
     * Indention of nested lists in ``rst`` is often incorrect, resulting in restarted numbering or block quotes.
+    
+      - Note: Nested list-tables (tables indented within lists/admonitions) are automatically fixed via the Nested Table De-indentation preprocessor
 
     * Random ``{.title-ref}`` snippets is a general indication to simplify the rst and re-translate.
 
@@ -174,7 +193,7 @@ GeoServer is used as an example here, which is a maven project with a convention
    mkdocs_translate migrate source/introduction/**/*.rst
    ```
 
-7. To generate out navigation tree:
+5. To generate out navigation tree:
    
    ```bash
    mkdocs_translate nav
