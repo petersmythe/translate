@@ -870,8 +870,10 @@ def convert_rst(rst_file: str) -> str:
 
     rst_prep = re.sub(r"\.md", r".prep.rst", md_tmp_file)
 
+    logging.info(f"[v0.6.3] convert_rst() calling preprocess_rst for '{rst_file}'")
     logging.debug("Preprocessing '" + rst_file + "' to '" + rst_prep + "'")
     preprocess_rst(rst_file, rst_prep)
+    logging.info(f"[v0.6.3] preprocess_rst() completed for '{rst_file}'")
 
     logging.debug("Converting '" + rst_prep + "' to '" + md_tmp_file + "'")
 
@@ -920,6 +922,7 @@ def detect_nested_tables(rst_content: str, file_path: str = None) -> list[tuple[
         - Skips tables inside literal code blocks (:: blocks)
         - Handles tabs (converted to 3 spaces)
     """
+    logger.debug(f"[v0.6.3] detect_nested_tables() called for {file_path}")
     lines = rst_content.split('\n')
     detections = []
     in_code_block = False
@@ -1008,11 +1011,12 @@ def deindent_nested_table(rst_content: str, detections: list[tuple[int, int, int
         - Adds HTML comment after each table
         - Validates table structure before/after
     """
+    logger.debug(f"[v0.6.3] deindent_nested_table() called for {file_path} with {len(detections)} detection(s)")
     lines = rst_content.split('\n')
     
     # Process in reverse order to preserve line numbers
     for start_line, end_line, indent_level in reversed(detections):
-        logger.debug(f"{file_path}: De-indenting table at lines {start_line+1}-{end_line+1} (removing {indent_level} spaces)")
+        logger.info(f"[v0.6.3] De-indenting {file_path} lines {start_line+1}-{end_line+1} (removing {indent_level} spaces)")
         
         # Extract and de-indent table lines
         deindented_lines = []
@@ -1065,9 +1069,20 @@ def preprocess_rst(rst_file: str, rst_prep: str) -> str:
     # De-indent nested list-tables FIRST (before other processing)
     # This must happen before block directive processing to ensure proper structure
     try:
+        logger.info(f"[v0.6.3] === START: Preprocessing nested tables in '{rst_file}' ===")
         nested_tables = detect_nested_tables(text, rst_file)
+        logger.info(f"[v0.6.3] detect_nested_tables() returned {len(nested_tables)} detection(s)")
         if nested_tables:
+            logger.info(f"[v0.6.3] Calling deindent_nested_table() for {len(nested_tables)} table(s)")
+            indent_levels = [indent for _, _, indent in nested_tables]
+            logger.info(f"[v0.6.3] Indentation levels: {sorted(set(indent_levels))} spaces")
             text = deindent_nested_table(text, nested_tables, rst_file)
+            logger.info(f"[v0.6.3] Successfully de-indented {len(nested_tables)} nested table(s)")
+        else:
+            logger.info(f"[v0.6.3] No nested tables found in '{rst_file}'")
+        logger.info(f"[v0.6.3] === END: Nested table preprocessing complete ===")
+        else:
+            logger.debug(f"{rst_file}: No nested tables found")
     except ValueError as e:
         logger.error(f"{rst_file}: Failed to de-indent nested tables: {e}")
         raise  # Fail migration as required
