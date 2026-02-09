@@ -35,7 +35,10 @@ app = typer.Typer(help="Translation for mkdocs content")
 logger = logging.getLogger(__app_name__)
 
 # Module-level initialization logging
+import sys
 print(f"[MODULE-INIT] cli.py loaded, __app_name__={__app_name__}", flush=True)
+sys.stderr.write(f"[STDERR-MODULE-INIT] cli.py loaded, __app_name__={__app_name__}\n")
+sys.stderr.flush()
 
 
 def _version_callback(value: bool) -> None:
@@ -45,7 +48,10 @@ def _version_callback(value: bool) -> None:
 
 
 def _log_callback(log: str) -> None:
+    import sys
     print(f"[_log_callback] called with log={log}", flush=True)
+    sys.stderr.write(f"[STDERR-LOG-CALLBACK] called with log={log}\n")
+    sys.stderr.flush()
     logging_format = '%(levelname)s: %(message)s'
     if not log:
         logging.basicConfig(format=logging_format, level=logging.INFO)
@@ -64,7 +70,10 @@ def _log_callback(log: str) -> None:
 
 
 def _config_callback(config_path: str) -> None:
+    import sys
     print(f"[_config_callback] called with config_path={config_path}", flush=True)
+    sys.stderr.write(f"[STDERR-CONFIG-CALLBACK] called with config_path={config_path}\n")
+    sys.stderr.flush()
     init_config(config_path)
 
 
@@ -284,7 +293,10 @@ def migrate(
     The rst directives are simplified prior to conversion following our writing guide:
     gui-label, menuselection, file, command
     """
+    import sys
     print(f"[ENTRY] migrate() called with rst_path={rst_path}", flush=True)
+    sys.stderr.write(f"[STDERR-MIGRATE] migrate() called with rst_path={rst_path}\n")
+    sys.stderr.flush()
     print(f"[ENTRY] migrate() about to call check_folders()", flush=True)
     check_folders()
     print(f"[ENTRY] migrate() check_folders() completed", flush=True)
@@ -377,4 +389,8 @@ def main(
     Services written around pandoc for format translation,
     and deepl for language translation services.
     """
+    import sys
+    print(f"[MAIN-CALLBACK] main() called, version={version}, log={log}, config={config}", flush=True)
+    sys.stderr.write(f"[STDERR] main() called, version={version}, log={log}, config={config}\n")
+    sys.stderr.flush()
     return
