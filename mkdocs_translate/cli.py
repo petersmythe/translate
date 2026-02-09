@@ -34,12 +34,6 @@ app = typer.Typer(help="Translation for mkdocs content")
 
 logger = logging.getLogger(__app_name__)
 
-# Module-level initialization logging
-import sys
-print(f"[MODULE-INIT] cli.py loaded, __app_name__={__app_name__}", flush=True)
-sys.stderr.write(f"[STDERR-MODULE-INIT] cli.py loaded, __app_name__={__app_name__}\n")
-sys.stderr.flush()
-
 
 def _version_callback(value: bool) -> None:
     if value:
@@ -48,10 +42,6 @@ def _version_callback(value: bool) -> None:
 
 
 def _log_callback(log: str) -> None:
-    import sys
-    print(f"[_log_callback] called with log={log}", flush=True)
-    sys.stderr.write(f"[STDERR-LOG-CALLBACK] called with log={log}\n")
-    sys.stderr.flush()
     logging_format = '%(levelname)s: %(message)s'
     if not log:
         logging.basicConfig(format=logging_format, level=logging.INFO)
@@ -70,10 +60,6 @@ def _log_callback(log: str) -> None:
 
 
 def _config_callback(config_path: str) -> None:
-    import sys
-    print(f"[_config_callback] called with config_path={config_path}", flush=True)
-    sys.stderr.write(f"[STDERR-CONFIG-CALLBACK] called with config_path={config_path}\n")
-    sys.stderr.flush()
     init_config(config_path)
 
 
@@ -293,31 +279,19 @@ def migrate(
     The rst directives are simplified prior to conversion following our writing guide:
     gui-label, menuselection, file, command
     """
-    import sys
-    print(f"[ENTRY] migrate() called with rst_path={rst_path}", flush=True)
-    sys.stderr.write(f"[STDERR-MIGRATE] migrate() called with rst_path={rst_path}\n")
-    sys.stderr.flush()
-    print(f"[ENTRY] migrate() about to call check_folders()", flush=True)
     check_folders()
-    print(f"[ENTRY] migrate() check_folders() completed", flush=True)
-    print(f"[ENTRY] migrate() about to call init_anchors()", flush=True)
     init_anchors()
-    print(f"[ENTRY] migrate() init_anchors() completed", flush=True)
 
     if not rst_path:
         rst_glob = mkdocs_translate.translate.rst_folder + "/**/*.rst"
         rst_path = [rst_glob]
 
-    print(f"[DEBUG] migrate() rst_path = {rst_path}", flush=True)
     for rst_file in collect_paths(rst_path, 'rst', True):
-        print(f"[DEBUG] About to convert: {rst_file}", flush=True)
         try:
             md_file = convert_rst(rst_file)
             print(md_file)
         except Exception as e:
-            print(f"[ERROR] Exception in convert_rst for {rst_file}: {type(e).__name__}: {e}", flush=True)
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Exception in convert_rst for {rst_file}: {type(e).__name__}: {e}")
             raise
 
 
@@ -389,19 +363,8 @@ def main(
     Services written around pandoc for format translation,
     and deepl for language translation services.
     """
-    import sys
-    print(f"[MAIN-CALLBACK] main() called, version={version}, log={log}, config={config}", flush=True)
-    sys.stderr.write(f"[STDERR-MAIN] main() called with version={version}, log={log}, config={config}\n")
-    sys.stderr.flush()
-    print(f"[MAIN-CALLBACK] Context would process subcommands here", flush=True)
-    sys.stderr.write(f"[STDERR-MAIN] About to return from main()\n")
-    sys.stderr.flush()
     return
 
 
 if __name__ == "__main__":
-    import sys
-    print(f"[MODULE-MAIN] cli.py running as __main__, sys.argv={sys.argv}", flush=True)
-    sys.stderr.write(f"[STDERR-MODULE-MAIN] cli.py running as __main__, about to call app()\n")
-    sys.stderr.flush()
     app()
