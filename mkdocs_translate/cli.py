@@ -391,6 +391,9 @@ def main(
     """
     import sys
     print(f"[MAIN-CALLBACK] main() called, version={version}, log={log}, config={config}", flush=True)
-    sys.stderr.write(f"[STDERR] main() called, version={version}, log={log}, config={config}\n")
+    sys.stderr.write(f"[STDERR-MAIN] main() called with version={version}, log={log}, config={config}\n")
+    sys.stderr.flush()
+    print(f"[MAIN-CALLBACK] Context would process subcommands here", flush=True)
+    sys.stderr.write(f"[STDERR-MAIN] About to return from main()\n")
     sys.stderr.flush()
     return
