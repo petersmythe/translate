@@ -34,6 +34,9 @@ app = typer.Typer(help="Translation for mkdocs content")
 
 logger = logging.getLogger(__app_name__)
 
+# Module-level initialization logging
+print(f"[MODULE-INIT] cli.py loaded, __app_name__={__app_name__}", flush=True)
+
 
 def _version_callback(value: bool) -> None:
     if value:
@@ -42,6 +45,7 @@ def _version_callback(value: bool) -> None:
 
 
 def _log_callback(log: str) -> None:
+    print(f"[_log_callback] called with log={log}", flush=True)
     logging_format = '%(levelname)s: %(message)s'
     if not log:
         logging.basicConfig(format=logging_format, level=logging.INFO)
@@ -60,6 +64,7 @@ def _log_callback(log: str) -> None:
 
 
 def _config_callback(config_path: str) -> None:
+    print(f"[_config_callback] called with config_path={config_path}", flush=True)
     init_config(config_path)
 
 
