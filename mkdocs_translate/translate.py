@@ -886,6 +886,154 @@ def convert_rst(rst_file: str) -> str:
     return md_file
 
 
+def detect_nested_tables(rst_content: str, file_path: str = None) -> list[tuple[int, int, int]]:
+    """
+    Detect indented list-table directives in RST content.
+    
+    Args:
+        rst_content: The RST file content as string
+        file_path: Optional file path for logging
+    
+    Returns:
+        List of (start_line, end_line, indent_level) tuples for each nested table.
+        Line numbers are 0-based.
+        
+    Notes:
+        - Only detects tables with indentation > 0
+        - Skips tables inside literal code blocks (:: blocks)
+        - Handles tabs (converted to 3 spaces)
+    """
+    lines = rst_content.split('\n')
+    detections = []
+    in_code_block = False
+    i = 0
+    
+    while i < len(lines):
+        line = lines[i]
+        
+        # Check for list-table directive FIRST (before code block check)
+        # because list-table lines end with :: which would trigger code block flag
+        if '.. list-table::' in line:
+            # Measure indentation (tabs = 3 spaces)
+            indent_str = line[:len(line) - len(line.lstrip())]
+            indent_level = len(indent_str.replace('\t', '   '))
+            
+            # Only process indented tables (nested within other structures)
+            if indent_level > 0 and not in_code_block:
+                start_line = i
+                logger.debug(f"{file_path}: Found nested list-table at line {i+1} with {indent_level} spaces indent")
+                
+                # Find the end of this table block
+                # Table continues while lines are indented >= indent_level or blank
+                i += 1
+                while i < len(lines):
+                    next_line = lines[i]
+                    if len(next_line.strip()) == 0:
+                        # Blank line - continue
+                        i += 1
+                        continue
+                    
+                    next_indent_str = next_line[:len(next_line) - len(next_line.lstrip())]
+                    next_indent = len(next_indent_str.replace('\t', '   '))
+                    
+                    if next_indent >= indent_level:
+                        # Still part of the table
+                        i += 1
+                    else:
+                        # Dedented - end of table
+                        break
+                
+                end_line = i - 1
+                detections.append((start_line, end_line, indent_level))
+                logger.debug(f"{file_path}: Table extends from line {start_line+1} to {end_line+1}")
+                continue
+        
+        # Track literal code blocks (introduced by lines ending with ::)
+        # BUT exclude directive lines (which start with ..)
+        # Content after :: is treated as literal until dedented
+        if line.rstrip().endswith('::') and not line.lstrip().startswith('..'):
+            in_code_block = True
+            i += 1
+            continue
+        
+        # Check if we're exiting a code block (dedented line)
+        if in_code_block:
+            indent_str = line[:len(line) - len(line.lstrip())]
+            if len(line.strip()) > 0 and len(indent_str) == 0:
+                in_code_block = False
+        
+        i += 1
+    
+    if detections and file_path:
+        logger.info(f"{file_path}: Found {len(detections)} nested table(s)")
+    
+    return detections
+
+
+def deindent_nested_table(rst_content: str, detections: list[tuple[int, int, int]], 
+                          file_path: str = None) -> str:
+    """
+    Remove indentation from detected nested list-tables and add documentation comments.
+    
+    Args:
+        rst_content: Original RST content
+        detections: List from detect_nested_tables()
+        file_path: Optional file path for logging/error messages
+    
+    Returns:
+        Modified RST content with de-indented tables
+        
+    Raises:
+        ValueError: If de-indentation fails (malformed table structure)
+        
+    Notes:
+        - Processes tables in reverse order (preserve line numbers)
+        - Adds HTML comment after each table
+        - Validates table structure before/after
+    """
+    lines = rst_content.split('\n')
+    
+    # Process in reverse order to preserve line numbers
+    for start_line, end_line, indent_level in reversed(detections):
+        logger.debug(f"{file_path}: De-indenting table at lines {start_line+1}-{end_line+1} (removing {indent_level} spaces)")
+        
+        # Extract and de-indent table lines
+        deindented_lines = []
+        for line_num in range(start_line, end_line + 1):
+            line = lines[line_num]
+            
+            # Handle blank lines
+            if len(line.strip()) == 0:
+                deindented_lines.append('')
+                continue
+            
+            # Calculate actual indentation (tabs = 3 spaces)
+            indent_str = line[:len(line) - len(line.lstrip())]
+            actual_indent = len(indent_str.replace('\t', '   '))
+            
+            # Validate: line must have at least indent_level spaces
+            if actual_indent < indent_level:
+                raise ValueError(
+                    f"File {file_path}, line {line_num+1}: Cannot remove {indent_level} spaces - "
+                    f"line only has {actual_indent} spaces"
+                )
+            
+            # Remove indentation by reconstructing from lstrip
+            # We need to remove exactly indent_level spaces worth of indentation
+            remaining_indent = actual_indent - indent_level
+            deindented_line = (' ' * remaining_indent) + line.lstrip()
+            deindented_lines.append(deindented_line)
+        
+        # Create documentation comment
+        comment = f"<!-- mkdocs-translate: removed {indent_level} spaces indentation -->"
+        
+        # Replace the original block with de-indented version + comment
+        lines[start_line:end_line+1] = deindented_lines + [comment]
+    
+    logger.info(f"{file_path}: De-indented {len(detections)} nested table(s)")
+    return '\n'.join(lines)
+
+
 def preprocess_rst(rst_file: str, rst_prep: str) -> str:
     """
     Pre-process rst files to simplify sphinx-build directives for pandoc conversion
@@ -896,6 +1044,16 @@ def preprocess_rst(rst_file: str, rst_prep: str) -> str:
     except UnicodeDecodeError as e:
         logger.error(f"Cannot preprocess {rst_file} due to encoding issues: {e}")
         raise
+
+    # De-indent nested list-tables FIRST (before other processing)
+    # This must happen before block directive processing to ensure proper structure
+    try:
+        nested_tables = detect_nested_tables(text, rst_file)
+        if nested_tables:
+            text = deindent_nested_table(text, nested_tables, rst_file)
+    except ValueError as e:
+        logger.error(f"{rst_file}: Failed to de-indent nested tables: {e}")
+        raise  # Fail migration as required
 
     # process toc_tree directive into a list of links
     if '.. toctree::' in text:
