@@ -1834,19 +1834,29 @@ def _list_table_scan(block:str) -> str:
 def _safe_list_table(file_path: str, value: str, arguments: dict[str, str], block: str, indent: str) -> str:
     """
     Safe list-table stripping out widths and width control which force grid-table representation.
+    Content must be indented under the directive for reStructuredText parsing.
     """
-    # re-encode list-table directive
+    # Re-encode list-table directive
     raw = f'{indent}.. list-table::\n'
-    for (key, value) in arguments.items():
+    
+    # Add any remaining options (excluding width/widths which prevent pandoc conversion)
+    for (key, val) in arguments.items():
         if key in ['width', 'widths']:
             continue
-        raw += f"{indent}   {indent}:{key}: {value}\n"
+        raw += f"{indent}   :{key}: {val}\n"
 
+    # Add blank line before content (required by RST)
     raw += f"{indent}\n"
 
+    # Add block content, properly indented under the directive
+    content_indent = indent + '   '  # Content must be indented 3+ spaces relative to directive
     for item in block.splitlines():
-        raw += item + '\n'
+        if item.strip():  # Only indent non-empty lines
+            raw += content_indent + item + '\n'
+        else:  # Preserve blank lines as-is
+            raw += '\n'
 
+    # Trailing blank line (required by RST)
     raw += indent + '\n'
     return raw
 
