@@ -409,14 +409,12 @@ End."""
         
         detections = detect_nested_tables(rst_content)
         
-        # Second table is not indented (at same level as preceding blank line after first table)
-        # Only the first table is truly indented
-        self.assertEqual(len(detections), 1)
+        self.assertEqual(len(detections), 2)
         
         result = deindent_nested_table(rst_content, detections)
         
-        # First table should be de-indented with comment
-        self.assertEqual(result.count("<!-- mkdocs-translate: removed"), 1)
+        # Both tables should be de-indented with comments
+        self.assertEqual(result.count("<!-- mkdocs-translate: removed"), 2)
 
 
 if __name__ == '__main__':

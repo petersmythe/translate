@@ -951,26 +951,53 @@ def detect_nested_tables(rst_content: str, file_path: str = None) -> list[tuple[
                 logger.debug(f"{file_path}: Found nested list-table at line {i+1} with {indent_level} spaces indent")
                 
                 # Find the end of this table block
-                # Table continues while lines are indented >= indent_level or blank
+                # Table continues while:
+                # - Lines are blank, OR
+                # - Lines are indented > table level (cell content), OR  
+                # - Lines at table level start with * (new row) or - (cell continuation)
+                # Table ends when we see a blank line followed by non-table content at table indent level
                 i += 1
+                last_was_blank = False
                 while i < len(lines):
                     next_line = lines[i]
                     if len(next_line.strip()) == 0:
-                        # Blank line - continue
+                        # Blank line - track it but continue
+                        last_was_blank = True
                         i += 1
                         continue
                     
                     next_indent_str = next_line[:len(next_line) - len(next_line.lstrip())]
                     next_indent = len(next_indent_str.replace('\t', '   '))
                     
-                    if next_indent >= indent_level:
-                        # Still part of the table
+                    if next_indent > indent_level:
+                        # Content indented more than table level (cell content)
+                        last_was_blank = False
                         i += 1
+                    elif next_indent == indent_level:
+                        # Content at same level as table directive
+                        # Check if it's a table row (* -) or cell continuation (- )
+                        stripped = next_line.lstrip()
+                        is_table_row = stripped.startswith('* ') or stripped.startswith('* -') or stripped.startswith('- ')
+                        
+                        
+                        if is_table_row or (not last_was_blank):
+                            # Still part of table (either a row/cell, or continuation without blank line)
+                            last_was_blank = False
+                            i += 1
+                        else:
+                            # After a blank line, content at table level but not a table row
+                            # This is a new block, not part of the table
+                            break
                     else:
                         # Dedented - end of table
                         break
                 
                 end_line = i - 1
+                
+                # Back up over trailing blank lines to get the real end of table content
+                while end_line > start_line and len(lines[end_line].strip()) == 0:
+                    end_line -= 1
+                
                 detections.append((start_line, end_line, indent_level))
                 logger.debug(f"{file_path}: Table extends from line {start_line+1} to {end_line+1}")
                 continue
@@ -1057,8 +1084,20 @@ def deindent_nested_table(rst_content: str, detections: list[tuple[int, int, int
         # Create documentation comment
         comment = f"<!-- mkdocs-translate: removed {indent_level} spaces indentation -->"
         
-        # Replace the original block with de-indented version + comment
-        lines[start_line:end_line+1] = deindented_lines + [comment]
+        # Replace the original block with de-indented version + comment + blank line
+        # If there's a blank line immediately after the table (end_line+1), skip it
+        # to avoid duplicate blank lines that break definition list syntax
+        replacement_lines = deindented_lines + [comment, '']
+        skip_next_blank = False
+        if end_line + 1 < len(lines) and len(lines[end_line + 1].strip()) == 0:
+            skip_next_blank = True
+        
+        lines[start_line:end_line+1] = replacement_lines
+        
+        # Remove the blank line that was after the table if there was one
+        if skip_next_blank and start_line + len(replacement_lines) < len(lines):
+            if len(lines[start_line + len(replacement_lines)].strip()) == 0:
+                del lines[start_line + len(replacement_lines)]
     
     logger.info(f"{file_path}: De-indented {len(detections)} nested table(s)")
     return '\n'.join(lines)
