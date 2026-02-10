@@ -840,8 +840,6 @@ def convert_rst(rst_file: str) -> str:
     :param md_file: Markdown file path
     :return: markdown file path
     """
-    print(f"[v0.6.4] *** convert_rst() ENTRY: {rst_file} ***", flush=True)
-    logger.info(f"[v0.6.4] *** convert_rst() ENTRY: {rst_file} ***")
     if not os.path.exists(rst_file):
         raise FileNotFoundError(errno.ENOENT, f"RST file does not exist at location:", rst_file)
 
@@ -872,12 +870,8 @@ def convert_rst(rst_file: str) -> str:
 
     rst_prep = re.sub(r"\.md", r".prep.rst", md_tmp_file)
 
-    print(f"[v0.6.4] convert_rst() calling preprocess_rst for '{rst_file}'", flush=True)
-    logging.info(f"[v0.6.4] convert_rst() calling preprocess_rst for '{rst_file}'")
     logging.debug("Preprocessing '" + rst_file + "' to '" + rst_prep + "'")
     preprocess_rst(rst_file, rst_prep)
-    print(f"[v0.6.4] preprocess_rst() completed for '{rst_file}'", flush=True)
-    logging.info(f"[v0.6.4] preprocess_rst() completed for '{rst_file}'")
 
     logging.debug("Converting '" + rst_prep + "' to '" + md_tmp_file + "'")
 
@@ -906,8 +900,6 @@ def convert_rst(rst_file: str) -> str:
         raise FileNotFoundError(errno.ENOENT, f"Did not create postprocessed md file:", md_file)
     shutil.copystat(rst_file, md_file)
 
-    print(f"[v0.6.4] *** convert_rst() EXIT: returning {md_file} ***", flush=True)
-    logger.info(f"[v0.6.4] *** convert_rst() EXIT: returning {md_file} ***")
     return md_file
 
 
@@ -928,8 +920,6 @@ def detect_nested_tables(rst_content: str, file_path: str = None) -> list[tuple[
         - Skips tables inside literal code blocks (:: blocks)
         - Handles tabs (converted to 3 spaces)
     """
-    print(f"[v0.6.4] detect_nested_tables() called for {file_path}", flush=True)
-    logger.debug(f"[v0.6.4] detect_nested_tables() called for {file_path}")
     lines = rst_content.split('\n')
     detections = []
     in_code_block = False
@@ -1045,14 +1035,10 @@ def deindent_nested_table(rst_content: str, detections: list[tuple[int, int, int
         - Adds HTML comment after each table
         - Validates table structure before/after
     """
-    print(f"[v0.6.4] deindent_nested_table() called for {file_path} with {len(detections)} detection(s)", flush=True)
-    logger.debug(f"[v0.6.4] deindent_nested_table() called for {file_path} with {len(detections)} detection(s)")
     lines = rst_content.split('\n')
     
     # Process in reverse order to preserve line numbers
     for start_line, end_line, indent_level in reversed(detections):
-        print(f"[v0.6.4] De-indenting {file_path} lines {start_line+1}-{end_line+1} (removing {indent_level} spaces)", flush=True)
-        logger.info(f"[v0.6.4] De-indenting {file_path} lines {start_line+1}-{end_line+1} (removing {indent_level} spaces)")
         
         # Extract and de-indent table lines
         deindented_lines = []
@@ -1107,8 +1093,6 @@ def preprocess_rst(rst_file: str, rst_prep: str) -> str:
     """
     Pre-process rst files to simplify sphinx-build directives for pandoc conversion
     """
-    print(f"[v0.6.4] *** preprocess_rst() ENTRY: {rst_file} ***", flush=True)
-    logger.info(f"[v0.6.4] *** preprocess_rst() ENTRY: {rst_file} ***")
     try:
         with open(rst_file, 'r', encoding='utf-8') as file:
             text = file.read()
@@ -1119,25 +1103,11 @@ def preprocess_rst(rst_file: str, rst_prep: str) -> str:
     # De-indent nested list-tables FIRST (before other processing)
     # This must happen before block directive processing to ensure proper structure
     try:
-        print(f"[v0.6.4] === START: Preprocessing nested tables in '{rst_file}' ===", flush=True)
-        logger.info(f"[v0.6.4] === START: Preprocessing nested tables in '{rst_file}' ===")
         nested_tables = detect_nested_tables(text, rst_file)
-        print(f"[v0.6.4] detect_nested_tables() returned {len(nested_tables)} detection(s)", flush=True)
-        logger.info(f"[v0.6.4] detect_nested_tables() returned {len(nested_tables)} detection(s)")
         if nested_tables:
-            print(f"[v0.6.4] Calling deindent_nested_table() for {len(nested_tables)} table(s)", flush=True)
-            logger.info(f"[v0.6.4] Calling deindent_nested_table() for {len(nested_tables)} table(s)")
             indent_levels = [indent for _, _, indent in nested_tables]
-            print(f"[v0.6.4] Indentation levels: {sorted(set(indent_levels))} spaces", flush=True)
-            logger.info(f"[v0.6.4] Indentation levels: {sorted(set(indent_levels))} spaces")
             text = deindent_nested_table(text, nested_tables, rst_file)
-            print(f"[v0.6.4] Successfully de-indented {len(nested_tables)} nested table(s)", flush=True)
-            logger.info(f"[v0.6.4] Successfully de-indented {len(nested_tables)} nested table(s)")
         else:
-            print(f"[v0.6.4] No nested tables found in '{rst_file}'", flush=True)
-            logger.info(f"[v0.6.4] No nested tables found in '{rst_file}'")
-        print(f"[v0.6.4] === END: Nested table preprocessing complete ===", flush=True)
-        logger.info(f"[v0.6.4] === END: Nested table preprocessing complete ===")
     except ValueError as e:
         logger.error(f"{rst_file}: Failed to de-indent nested tables: {e}")
         raise  # Fail migration as required
@@ -2538,6 +2508,19 @@ def postprocess_rst_markdown(md_file: str, md_clean: str):
     if code:
         # file ended with a code block
         clean += code
+
+    # Fix blank quote line between definition term and definition
+    # Pandoc outputs:
+    # > Term
+    # >
+    # > : Definition
+    # which breaks definition lists in Markdown parsers.
+    clean = re.sub(
+        r'^(> (?!:).+)\n>\s*\n(> :\s)',
+        r'\1\n\2',
+        clean,
+        flags=re.MULTILINE
+    )
 
     # fix macros in URLs
     link_pattern = re.compile(r"\[(.*?)\]\((.*?)\)",flags=re.MULTILINE)

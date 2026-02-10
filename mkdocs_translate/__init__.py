@@ -2,7 +2,7 @@
 # message/__init__.py
 
 __app_name__ = "mkdocs_translate"
-__version__ = "0.6.14"
+__version__ = "0.6.15"
 
 (
     SUCCESS,
