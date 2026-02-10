@@ -1107,7 +1107,6 @@ def preprocess_rst(rst_file: str, rst_prep: str) -> str:
         if nested_tables:
             indent_levels = [indent for _, _, indent in nested_tables]
             text = deindent_nested_table(text, nested_tables, rst_file)
-        else:
     except ValueError as e:
         logger.error(f"{rst_file}: Failed to de-indent nested tables: {e}")
         raise  # Fail migration as required
