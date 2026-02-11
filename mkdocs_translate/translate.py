@@ -1460,7 +1460,7 @@ def _block_directive_figure(path: str, value: str, arguments: dict[str, str], bl
     image = _to_relative_path(path, value)
 
     raw = indent + '.. code-block:: raw_markdown\n\n'
-    raw += indent + '   ![](' + image + ')\n'
+    raw += indent + '   ![](' + image + ')  \n'
 
     caption: str = None
     legend: str = None
@@ -2507,19 +2507,6 @@ def postprocess_rst_markdown(md_file: str, md_clean: str):
     if code:
         # file ended with a code block
         clean += code
-
-    # Fix blank quote line between definition term and definition
-    # Pandoc outputs:
-    # > Term
-    # >
-    # > : Definition
-    # which breaks definition lists in Markdown parsers.
-    clean = re.sub(
-        r'^(> (?!:).+)\n>\s*\n(> :\s)',
-        r'\1\n\2',
-        clean,
-        flags=re.MULTILINE
-    )
 
     # fix macros in URLs
     link_pattern = re.compile(r"\[(.*?)\]\((.*?)\)",flags=re.MULTILINE)
