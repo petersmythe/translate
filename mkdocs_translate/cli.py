@@ -12,7 +12,10 @@ from typing import List
 from typing import Optional
 
 import typer
-from typing_extensions import Annotated
+try:
+    from typing_extensions import Annotated
+except Exception:
+    from typing import Annotated
 
 import mkdocs_translate.translate
 from mkdocs_translate import __app_name__, __version__
